@@ -1,0 +1,199 @@
+# depslib dependency file v1.0
+1580754262 source:c:\users\floyd\documents\c\func\chunk.c
+	<stdio.h>
+	<stdlib.h>
+	"chunk.h"
+	"memory.h"
+	"vm.h"
+
+1579791489 c:\users\floyd\documents\c\func\chunk.h
+	"common.h"
+	"value.h"
+
+1580753842 c:\users\floyd\documents\c\func\common.h
+	<stdbool.h>
+	<stddef.h>
+	<stdint.h>
+
+1580646566 c:\users\floyd\documents\c\func\value.h
+	"common.h"
+
+1579184735 c:\users\floyd\documents\c\func\memory.h
+	"object.h"
+
+1580738713 c:\users\floyd\documents\c\func\object.h
+	"chunk.h"
+	"common.h"
+	"table.h"
+	"value.h"
+
+1580042717 c:\users\floyd\documents\c\func\vm.h
+	"object.h"
+	"table.h"
+	"value.h"
+
+1579186396 c:\users\floyd\documents\c\func\table.h
+	"common.h"
+	"value.h"
+
+1580754082 source:c:\users\floyd\documents\c\func\compiler.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<stdint.h>
+	"common.h"
+	"compiler.h"
+	"error.h"
+	"memory.h"
+	"scanner.h"
+	"object.h"
+	"debug.h"
+
+1579182797 c:\users\floyd\documents\c\func\compiler.h
+	"vm.h"
+
+1579692248 c:\users\floyd\documents\c\func\scanner.h
+
+1576430194 c:\users\floyd\documents\c\func\debug.h
+	"chunk.h"
+
+1580729328 source:c:\users\floyd\documents\c\func\debug.c
+	<stdio.h>
+	"debug.h"
+	"memory.h"
+	"object.h"
+	"value.h"
+
+1580752045 source:c:\users\floyd\documents\c\func\memory.c
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	"common.h"
+	"compiler.h"
+	"memory.h"
+	"object.h"
+	"vm.h"
+	"debug.h"
+
+1580741334 source:c:\users\floyd\documents\c\func\object.c
+	<stdio.h>
+	<string.h>
+	"memory.h"
+	"object.h"
+	"table.h"
+	"value.h"
+	"vm.h"
+
+1579692248 source:c:\users\floyd\documents\c\func\scanner.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"common.h"
+	"scanner.h"
+
+1580728975 source:c:\users\floyd\documents\c\func\table.c
+	<stdlib.h>
+	<string.h>
+	<stdio.h>
+	"memory.h"
+	"object.h"
+	"table.h"
+	"value.h"
+
+1580728910 source:c:\users\floyd\documents\c\func\value.c
+	<stdio.h>
+	<string.h>
+	"memory.h"
+	"value.h"
+	"object.h"
+	"vm.h"
+
+1580753948 source:c:\users\floyd\documents\c\func\vm.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<time.h>
+	<sys\timeb.h>
+	<math.h>
+	"common.h"
+	"compiler.h"
+	"debug.h"
+	"error.h"
+	"file.h"
+	"index.h"
+	"vm.h"
+	"object.h"
+	"objarray.h"
+	"objstring.h"
+	"memory.h"
+
+1579795994 source:c:\users\floyd\documents\c\func\main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"version.h"
+	"common.h"
+	"chunk.h"
+	"debug.h"
+	"error.h"
+	"file.h"
+	"vm.h"
+
+1576150740 c:\users\floyd\documents\c\func\version.h
+
+1578571303 c:\users\floyd\documents\c\func\error.h
+	<stdarg.h>
+
+1579530317 source:c:\users\floyd\documents\c\func\error.c
+	<string.h>
+	<stdio.h>
+	<stdlib.h>
+	"error.h"
+
+1578842684 c:\users\floyd\documents\c\func\file.h
+
+1578844252 source:c:\users\floyd\documents\c\func\file.c
+	<limits.h>
+	<stdio.h>
+	<stdlib.h>
+	<unistd.h>
+	"file.h"
+
+1580043701 source:c:\users\floyd\documents\c\func\array.c
+	<string.h>
+	"array.h"
+	"memory.h"
+	"object.h"
+	"vm.h"
+
+1580044668 c:\users\floyd\documents\c\func\array.h
+	"value.h"
+
+1580128070 c:\users\floyd\documents\c\func\string.h
+	"value.h"
+
+1580754325 source:c:\users\floyd\documents\c\func\objarray.c
+	<string.h>
+	"objarray.h"
+	"memory.h"
+	"object.h"
+	"vm.h"
+
+1580128239 c:\users\floyd\documents\c\func\objarray.h
+	"value.h"
+
+1580128192 c:\users\floyd\documents\c\func\objstring.h
+	"value.h"
+
+1580245411 source:c:\users\floyd\documents\c\func\objstring.c
+	<stdio.h>
+	<string.h>
+	"objstring.h"
+	"index.h"
+	"vm.h"
+
+1580204319 source:c:\users\floyd\documents\c\func\index.c
+	"index.h"
+
+1580204319 c:\users\floyd\documents\c\func\index.h
+
