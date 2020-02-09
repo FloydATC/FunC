@@ -178,7 +178,8 @@ static void errorAt(VM* vm, Token* token, const char* message) {
   if (vm->parser->panicMode) return;
   vm->parser->panicMode = true;
 
-  //fprintf(stderr, "[line %d] Error", token->line);
+  printf("compiler:errorAt() vm=%p token=%p message=%s\n", vm, token, message);
+  printf("compiler:errorAt() token fileno=%d lineno=%d charno=%d\n", token->fileno, token->lineno, token->charno);
   vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
 
 
