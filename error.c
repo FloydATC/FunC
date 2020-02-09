@@ -17,7 +17,11 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
   if (buf == NULL) {
     buf = malloc((addsiz+1)*sizeof(char));
   } else {
-    buf = (char*) realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
+    char* newbuf = (char*) realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
+    if (newbuf != buf) {
+      memcpy(newbuf, buf, bufsiz);
+      buf = newbuf;
+    }
   }
   vsnprintf(buf+bufsiz, addsiz, format, argp);
   //va_end (args);
