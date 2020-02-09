@@ -2,6 +2,7 @@
 #define cfun_vm_h
 
 //#include "chunk.h"
+#include "compiler.h"
 #include "object.h"
 #include "table.h"
 #include "value.h"
@@ -27,6 +28,8 @@ typedef enum {
 } InterpretResult;
 
 //extern VM vm; // Expose the VM state so other modules can access it
+struct Parser;
+struct Compiler;
 
 typedef struct FunVM {
   CallFrame frames[FRAMES_MAX];
@@ -49,6 +52,9 @@ typedef struct FunVM {
   char* errbuf; // For compiler errors -- replace with callback FIXME
 
   Obj* objects;  // Code chunks. Variables. Constants.
+
+  struct Parser* parser;
+  struct Compiler* compiler; // current
 
   int grayCount; // GC graystack slots in use
   int grayCapacity; // GC graystack slot capacity

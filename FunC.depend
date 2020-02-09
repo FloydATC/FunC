@@ -10,7 +10,7 @@
 	"common.h"
 	"value.h"
 
-1580753842 c:\users\floyd\documents\c\func\common.h
+1581238582 c:\users\floyd\documents\c\func\common.h
 	<stdbool.h>
 	<stddef.h>
 	<stdint.h>
@@ -27,7 +27,8 @@
 	"table.h"
 	"value.h"
 
-1580042717 c:\users\floyd\documents\c\func\vm.h
+1581179530 c:\users\floyd\documents\c\func\vm.h
+	"compiler.h"
 	"object.h"
 	"table.h"
 	"value.h"
@@ -36,7 +37,7 @@
 	"common.h"
 	"value.h"
 
-1580754082 source:c:\users\floyd\documents\c\func\compiler.c
+1581237596 source:c:\users\floyd\documents\c\func\compiler.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -47,17 +48,18 @@
 	"memory.h"
 	"scanner.h"
 	"object.h"
+	"vm.h"
 	"debug.h"
 
-1579182797 c:\users\floyd\documents\c\func\compiler.h
-	"vm.h"
+1581182017 c:\users\floyd\documents\c\func\compiler.h
+	"object.h"
 
 1579692248 c:\users\floyd\documents\c\func\scanner.h
 
 1576430194 c:\users\floyd\documents\c\func\debug.h
 	"chunk.h"
 
-1580729328 source:c:\users\floyd\documents\c\func\debug.c
+1581170767 source:c:\users\floyd\documents\c\func\debug.c
 	<stdio.h>
 	"debug.h"
 	"memory.h"
@@ -91,7 +93,7 @@
 	"common.h"
 	"scanner.h"
 
-1580728975 source:c:\users\floyd\documents\c\func\table.c
+1580754378 source:c:\users\floyd\documents\c\func\table.c
 	<stdlib.h>
 	<string.h>
 	<stdio.h>
@@ -108,12 +110,11 @@
 	"object.h"
 	"vm.h"
 
-1580753948 source:c:\users\floyd\documents\c\func\vm.c
+1581241078 source:c:\users\floyd\documents\c\func\vm.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
 	<time.h>
-	<sys\timeb.h>
 	<math.h>
 	"common.h"
 	"compiler.h"
@@ -144,7 +145,7 @@
 1578571303 c:\users\floyd\documents\c\func\error.h
 	<stdarg.h>
 
-1579530317 source:c:\users\floyd\documents\c\func\error.c
+1581168752 source:c:\users\floyd\documents\c\func\error.c
 	<string.h>
 	<stdio.h>
 	<stdlib.h>

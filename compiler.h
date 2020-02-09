@@ -1,11 +1,11 @@
 #ifndef clox_compiler_h
 #define clox_compiler_h
 
-#include "vm.h"
 
-struct VM;
+#include "object.h"
 
-ObjFunction* compile(VM* vm, int fileno, const char* source, char** err);
+
+ObjFunction* compile(void* vm, int fileno, const char* source, char** err);
 void markCompilerRoots();
 
 #endif

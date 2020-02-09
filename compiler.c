@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "scanner.h"
 #include "object.h"
+#include "vm.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -86,13 +87,6 @@
 
 */
 
-typedef struct {
-  Token current;
-  Token previous;
-  bool hadError;
-  bool panicMode;
-  char* errorBuffer;
-} Parser;
 
 typedef enum {
   PREC_NONE,        // lowest = do last
@@ -116,6 +110,14 @@ typedef enum {
 
 typedef void (*ParseFn)(VM* vm, bool canAssign);
 
+typedef struct Parser {
+  bool hadError;
+  bool panicMode;
+  char* errorBuffer;
+  Token current;
+  Token previous;
+} Parser;
+
 typedef struct {
   ParseFn prefix; // function to compile a prefix expr starting with that token
   ParseFn infix; // function to compile an infix expr whose left operand is followed by that token
@@ -138,6 +140,7 @@ typedef enum {
   TYPE_SCRIPT
 } FunctionType;
 
+
 typedef struct Compiler {
   struct Compiler* enclosing;
   ObjFunction* function;
@@ -148,11 +151,13 @@ typedef struct Compiler {
   Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 
+  ErrorCb error_callback;
 
 } Compiler;
 
-Parser parser;
-Compiler* current = NULL;
+
+// Parser parser;
+// Compiler* current = NULL;
 
 // https://github.com/munificent/craftinginterpreters/blob/master/note/answers/chapter23_jumping/2.md
 int innermostLoopStart = -1;
@@ -162,74 +167,75 @@ int innermostBreakScopeDepth = 0;
 int* innermostBreakJump = NULL;
 int innermostBreakJumps = 0;
 
-static Chunk* currentChunk() {
-  return &current->function->chunk;
+static Chunk* currentChunk(VM* vm) {
+  return &vm->compiler->function->chunk;
+  //return &current->function->chunk;
 }
 
 
 
-static void errorAt(Token* token, const char* message) {
-  if (parser.panicMode) return;
-  parser.panicMode = true;
+static void errorAt(VM* vm, Token* token, const char* message) {
+  if (vm->parser->panicMode) return;
+  vm->parser->panicMode = true;
 
   //fprintf(stderr, "[line %d] Error", token->line);
-  parser.errorBuffer = bprintf(parser.errorBuffer, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
+  vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
 
 
   if (token->type == TOKEN_EOF) {
     //fprintf(stderr, " at end");
-    parser.errorBuffer = bprintf(parser.errorBuffer, " at end");
+    vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at end");
   } else if (token->type == TOKEN_ERROR) {
     // Nothing.
   } else {
     //fprintf(stderr, " at '%.*s'", token->length, token->start);
-    parser.errorBuffer = bprintf(parser.errorBuffer, " at '%.*s'", token->length, token->start);
+    vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at '%.*s'", token->length, token->start);
   }
 
   //fprintf(stderr, ": %s\n", message);
-  parser.errorBuffer = bprintf(parser.errorBuffer, ": %s\n", message);
-  parser.hadError = true;
+  vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, ": %s\n", message);
+  vm->parser->hadError = true;
 }
 
-static void error(const char* message) {
-  errorAt(&parser.previous, message);
+static void error(VM* vm, const char* message) {
+  errorAt(vm, &vm->parser->previous, message);
 }
 
-static void errorAtCurrent(const char* message) {
-  errorAt(&parser.current, message);
+static void errorAtCurrent(VM* vm, const char* message) {
+  errorAt(vm, &vm->parser->current, message);
 }
 
-static void advance() {
+static void advance(VM* vm) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:advance()\n");
 #endif // DEBUG_TRACE_COMPILER
-  parser.previous = parser.current;
+  vm->parser->previous = vm->parser->current;
 
   for (;;) {
-    parser.current = scanToken();
-    if (parser.current.type != TOKEN_ERROR) break;
-    errorAtCurrent(parser.current.start);
+    vm->parser->current = scanToken(); // scanner
+    if (vm->parser->current.type != TOKEN_ERROR) break;
+    errorAtCurrent(vm, vm->parser->current.start);
   }
 }
 
-static void consume(TokenType type, const char* message) {
-  if (parser.current.type == type) {
-    advance();
+static void consume(VM* vm, TokenType type, const char* message) {
+  if (vm->parser->current.type == type) {
+    advance(vm);
     return;
   }
 
-  errorAtCurrent(message);
+  errorAtCurrent(vm, message);
 }
 
 // IF type matches THEN return true ELSE return false
-static bool check(TokenType type) {
-  return parser.current.type == type;
+static bool check(VM* vm, TokenType type) {
+  return (vm->parser->current.type == type);
 }
 
 // IF type matches THEN advance and return true ELSE return false
-static bool match(TokenType type) {
-  if (!check(type)) return false;
-  advance();
+static bool match(VM* vm, TokenType type) {
+  if (!check(vm, type)) return false;
+  advance(vm);
   return true;
 }
 
@@ -237,15 +243,15 @@ static void emitByte(VM* vm, uint8_t byte) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:emitByte(%d)\n", byte);
 #endif // DEBUG_TRACE_COMPILER
-  writeChunk(vm, currentChunk(), byte, parser.previous.fileno, parser.previous.lineno, parser.previous.charno);
+  writeChunk(vm, currentChunk(vm), byte, vm->parser->previous.fileno, vm->parser->previous.lineno, vm->parser->previous.charno);
 }
 
 static void emitWord(VM* vm, uint16_t word) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:emitWord(%d)\n", word);
 #endif // DEBUG_TRACE_COMPILER
-  writeChunk(vm, currentChunk(), word>>8, parser.previous.fileno, parser.previous.lineno, parser.previous.charno);
-  writeChunk(vm, currentChunk(), word&0xff, parser.previous.fileno, parser.previous.lineno, parser.previous.charno);
+  writeChunk(vm, currentChunk(vm), word>>8, vm->parser->previous.fileno, vm->parser->previous.lineno, vm->parser->previous.charno);
+  writeChunk(vm, currentChunk(vm), word&0xff, vm->parser->previous.fileno, vm->parser->previous.lineno, vm->parser->previous.charno);
 }
 
 static void emitBytes(VM* vm, uint8_t byte1, uint8_t byte2) {
@@ -257,8 +263,8 @@ static void emitBytes(VM* vm, uint8_t byte1, uint8_t byte2) {
 static void emitLoop(VM* vm, int loopStart) {
   emitByte(vm, OP_LOOP);
 
-  int offset = currentChunk()->count - loopStart + 2;
-  if (offset > UINT16_MAX) error("Loop body too large.");
+  int offset = currentChunk(vm)->count - loopStart + 2;
+  if (offset > UINT16_MAX) error(vm, "Loop body too large.");
 
   emitByte(vm, (offset >> 8) & 0xff);
   emitByte(vm, offset & 0xff);
@@ -269,7 +275,7 @@ static int emitJump(VM* vm, uint8_t instruction) {
   emitByte(vm, instruction);
   emitByte(vm, 0xff); // Placeholder address
   emitByte(vm, 0xff);
-  return currentChunk()->count - 2; // Placeholder position
+  return currentChunk(vm)->count - 2; // Placeholder position
 }
 
 static void emitReturn(VM* vm) {
@@ -278,10 +284,10 @@ static void emitReturn(VM* vm) {
 }
 
 static uint16_t makeConstant(VM* vm, Value value) {
-  int constant = addConstant(vm, currentChunk(), value);
+  int constant = addConstant(vm, currentChunk(vm), value);
 //  if (constant > UINT8_MAX) {
   if (constant > UINT16_MAX) {
-    error("Too many constants in one chunk.");
+    error(vm, "Too many constants in one chunk.");
     return 0;
   }
 
@@ -299,25 +305,26 @@ static void emitConstant(VM* vm, Value value) {
 static void patchJump(VM* vm, int offset) {
   (unused)vm;
   // -2 to adjust for the bytecode for the jump offset itself.
-  int jump = currentChunk()->count - offset - 2;
+  int jump = currentChunk(vm)->count - offset - 2;
 
   if (jump > UINT16_MAX) {
-    error("Too much code to jump over.");
+    error(vm, "Too much code to jump over.");
   }
 
-  currentChunk()->code[offset] = (jump >> 8) & 0xff;
-  currentChunk()->code[offset + 1] = jump & 0xff;
+  currentChunk(vm)->code[offset] = (jump >> 8) & 0xff;
+  currentChunk(vm)->code[offset + 1] = jump & 0xff;
 }
 
 static void initCompiler(VM* vm, Compiler* compiler, FunctionType type) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:initCompiler(%p, %d)\n", compiler, type);
 #endif // DEBUG_TRACE_COMPILER
-  compiler->enclosing = current;
+  compiler->enclosing = vm->compiler; // current;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->error_callback = vm->error_callback;
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:initCompiler() calling newFunction()\n");
 #endif // DEBUG_TRACE_COMPILER
@@ -325,63 +332,73 @@ static void initCompiler(VM* vm, Compiler* compiler, FunctionType type) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:initCompiler() newFunction() returned %p\n", compiler->function);
 #endif // DEBUG_TRACE_COMPILER
-  current = compiler;
+//  current = compiler;
+  vm->compiler = compiler;
 
   if (type != TYPE_SCRIPT) {
 #ifdef DEBUG_TRACE_COMPILER
     printf("compiler:initCompiler() type not TYPE_SCRIPT\n");
 #endif // DEBUG_TRACE_COMPILER
-    current->function->name = copyString(vm, parser.previous.start,
-                                         parser.previous.length);
+//    current->function->name = copyString(vm, vm->parser->previous.start,
+    vm->compiler->function->name = copyString(vm, vm->parser->previous.start,
+                                         vm->parser->previous.length);
   }
 
-  Local* local = &current->locals[current->localCount++];
+//  Local* local = &current->locals[current->localCount++];
+  Local* local = &vm->compiler->locals[vm->compiler->localCount++];
   local->depth = 0;
   local->isCaptured = false;
   local->name.start = "";
   local->name.length = 0;
 #ifdef DEBUG_TRACE_COMPILER
-  printf("compiler:initCompiler() compiler %p initialized\n", current);
+//  printf("compiler:initCompiler() compiler %p initialized\n", current);
+  printf("compiler:initCompiler() compiler %p initialized\n", vm->compiler);
 #endif // DEBUG_TRACE_COMPILER
 }
 
 static ObjFunction* endCompiler(VM* vm) {
 #ifdef DEBUG_TRACE_COMPILER
-  printf("compiler:endCompiler() %p finished compiling function %p\n", current, current->function);
+//  printf("compiler:endCompiler() %p finished compiling function %p\n", current, current->function);
+  printf("compiler:endCompiler() %p finished compiling function %p\n", vm->compiler, vm->compiler->function);
 #endif // DEBUG_TRACE_COMPILER
   emitReturn(vm);
-  ObjFunction* function = current->function;
+//  ObjFunction* function = current->function;
+  ObjFunction* function = vm->compiler->function;
 #ifdef DEBUG_PRINT_CODE
-  if (!parser.hadError) {
-    hexdump(currentChunk()->code, currentChunk()->count);
-    disassembleChunk(currentChunk(),
+  if (!vm->parser->hadError) {
+    hexdump(currentChunk(vm)->code, currentChunk(vm)->count);
+    disassembleChunk(currentChunk(vm),
         function->name != NULL ? function->name->chars : "<script>");
   }
 #endif
 
-  current = current->enclosing;
+//  current = current->enclosing;
+  vm->compiler = vm->compiler->enclosing;
   return function;
 }
 
-static void beginScope() {
-  current->scopeDepth++;
+static void beginScope(VM* vm) {
+//  current->scopeDepth++;
+  vm->compiler->scopeDepth++;
 }
 
 static void endScope(VM* vm) {
-  current->scopeDepth--;
+//  current->scopeDepth--;
+  struct Compiler* cc = vm->compiler;
+  cc->scopeDepth--;
 
   //uint8_t count = 0;
-  while (current->localCount > 0 &&
-         current->locals[current->localCount - 1].depth >
-            current->scopeDepth) {
-    if (current->locals[current->localCount - 1].isCaptured) {
+  while (cc->localCount > 0 &&
+         cc->locals[cc->localCount - 1].depth >
+            cc->scopeDepth) {
+    if (cc->locals[cc->localCount - 1].isCaptured) {
       emitByte(vm, OP_CLOSE_UPVALUE);
     } else {
       emitByte(vm, OP_POP);
       //count++; // Custom OP_POPN counter init
     }
 
-    current->localCount--;
+    cc->localCount--;
   }
 
   // Custom OP_POPN code
@@ -414,12 +431,12 @@ static bool identifiersEqual(Token* a, Token* b) {
   return memcmp(a->start, b->start, a->length) == 0;
 }
 
-static int resolveLocal(Compiler* compiler, Token* name) {
+static int resolveLocal(VM* vm, Compiler* compiler, Token* name) {
   for (int i = compiler->localCount - 1; i >= 0; i--) {
     Local* local = &compiler->locals[i];
     if (identifiersEqual(name, &local->name)) {
       if (local->depth == -1) {
-        error("Cannot read local variable in its own initializer.");
+        error(vm, "Cannot read local variable in its own initializer.");
       }
       return i;
     }
@@ -428,7 +445,7 @@ static int resolveLocal(Compiler* compiler, Token* name) {
   return -1;
 }
 
-static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
+static int addUpvalue(VM* vm, Compiler* compiler, uint8_t index, bool isLocal) {
   int upvalueCount = compiler->function->upvalueCount;
 
   for (int i = 0; i < upvalueCount; i++) {
@@ -439,7 +456,7 @@ static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
   }
 
   if (upvalueCount == UINT8_COUNT) {
-    error("Too many closure variables in function.");
+    error(vm, "Too many closure variables in function.");
     return 0;
   }
 
@@ -448,73 +465,84 @@ static int addUpvalue(Compiler* compiler, uint8_t index, bool isLocal) {
   return compiler->function->upvalueCount++;
 }
 
-static int resolveUpvalue(Compiler* compiler, Token* name) {
+static int resolveUpvalue(VM* vm, Compiler* compiler, Token* name) {
   if (compiler->enclosing == NULL) return -1;
 
-  int local = resolveLocal(compiler->enclosing, name);
+  int local = resolveLocal(vm, compiler->enclosing, name);
   if (local != -1) {
     compiler->enclosing->locals[local].isCaptured = true;
-    return addUpvalue(compiler, (uint8_t)local, true);
+    return addUpvalue(vm, compiler, (uint8_t)local, true);
   }
 
-  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  int upvalue = resolveUpvalue(vm, compiler->enclosing, name);
   if (upvalue != -1) {
-    return addUpvalue(compiler, (uint8_t)upvalue, false);
+    return addUpvalue(vm, compiler, (uint8_t)upvalue, false);
   }
 
   return -1;
 }
 
-static void addLocal(Token name) {
-  if (current->localCount == UINT8_COUNT) {
-    error("Too many local variables in function.");
+static void addLocal(VM* vm, Token name) {
+//  if (current->localCount == UINT8_COUNT) {
+  if (vm->compiler->localCount == UINT8_COUNT) {
+    error(vm, "Too many local variables in function.");
     return;
   }
 
-  Local* local = &current->locals[current->localCount++];
+//  Local* local = &current->locals[current->localCount++];
+  Local* local = &vm->compiler->locals[vm->compiler->localCount++];
   local->name = name;
   local->depth = -1;
   local->isCaptured = false;
 }
 
-static void declareVariable() {
+static void declareVariable(VM* vm) {
   // Global variables are implicitly declared.
-  if (current->scopeDepth == 0) return;
+//  if (current->scopeDepth == 0) return;
+  if (vm->compiler->scopeDepth == 0) return;
 
-  Token* name = &parser.previous;
-  for (int i = current->localCount - 1; i >= 0; i--) {
-    Local* local = &current->locals[i];
-    if (local->depth != -1 && local->depth < current->scopeDepth) {
+  Token* name = &vm->parser->previous;
+//  for (int i = current->localCount - 1; i >= 0; i--) {
+  for (int i = vm->compiler->localCount - 1; i >= 0; i--) {
+//    Local* local = &current->locals[i];
+    Local* local = &vm->compiler->locals[i];
+//    if (local->depth != -1 && local->depth < current->scopeDepth) {
+    if (local->depth != -1 && local->depth < vm->compiler->scopeDepth) {
       break;
     }
 
     if (identifiersEqual(name, &local->name)) {
-      error("Variable with this name already declared in this scope.");
+      error(vm, "Variable with this name already declared in this scope.");
     }
   }
 
-  addLocal(*name);
+  addLocal(vm, *name);
 }
 
 //static uint8_t parseVariable(VM* vm, const char* errorMessage) {
 static uint16_t parseVariable(VM* vm, const char* errorMessage) {
-  consume(TOKEN_IDENTIFIER, errorMessage);
+  consume(vm, TOKEN_IDENTIFIER, errorMessage);
 
-  declareVariable();
-  if (current->scopeDepth > 0) return 0;
+  declareVariable(vm);
+//  if (current->scopeDepth > 0) return 0;
+  if (vm->compiler->scopeDepth > 0) return 0;
 
-  return identifierConstant(vm, &parser.previous);
+  return identifierConstant(vm, &vm->parser->previous);
 }
 
-static void markInitialized() {
-  if (current->scopeDepth == 0) return;
-  current->locals[current->localCount - 1].depth = current->scopeDepth;
+static void markInitialized(VM* vm) {
+//  if (current->scopeDepth == 0) return;
+//  current->locals[current->localCount - 1].depth = current->scopeDepth;
+  if (vm->compiler->scopeDepth == 0) return;
+  vm->compiler->locals[vm->compiler->localCount - 1].depth = vm->compiler->scopeDepth;
 }
 
 //static void defineVariable(VM* vm, uint8_t global) {
 static void defineVariable(VM* vm, uint16_t global) {
-  if (current->scopeDepth > 0) {
-    markInitialized();
+  printf("compiler:defineVariable() vm=%p global=%d\n", vm, global);
+//  if (current->scopeDepth > 0) {
+  if (vm->compiler->scopeDepth > 0) {
+    markInitialized(vm);
     return;
   }
 //  emitBytes(vm, OP_DEFINE_GLOBAL, global);
@@ -524,18 +552,18 @@ static void defineVariable(VM* vm, uint16_t global) {
 
 static uint8_t argumentList(VM* vm) {
   uint8_t argCount = 0;
-  if (!check(TOKEN_RIGHT_PAREN)) {
+  if (!check(vm, TOKEN_RIGHT_PAREN)) {
     do {
       expression(vm);
 
       if (argCount == 255) {
-        error("Cannot have more than 255 arguments.");
+        error(vm, "Cannot have more than 255 arguments.");
       }
       argCount++;
-    } while (match(TOKEN_COMMA));
+    } while (match(vm, TOKEN_COMMA));
   }
 
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
   return argCount;
 }
 
@@ -552,7 +580,7 @@ static void and_(VM* vm, bool canAssign) {
 static void binary(VM* vm, bool canAssign) {
   (unused)canAssign;
   // Remember the operator.
-  TokenType operatorType = parser.previous.type;
+  TokenType operatorType = vm->parser->previous.type;
 
   // Compile the right operand.
   ParseRule* rule = getRule(operatorType); // asks: what precedence is this operator?
@@ -589,12 +617,12 @@ static void call(VM* vm, bool canAssign) {
 }
 
 static void dot(VM* vm, bool canAssign) {
-  consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
-//  uint8_t name = identifierConstant(vm, &parser.previous);
-  uint16_t name = identifierConstant(vm, &parser.previous);
+  consume(vm, TOKEN_IDENTIFIER, "Expect property name after '.'.");
+//  uint8_t name = identifierConstant(vm, &vm->parser->previous);
+  uint16_t name = identifierConstant(vm, &vm->parser->previous);
 
 
-  if (canAssign && match(TOKEN_EQUAL)) {
+  if (canAssign && match(vm, TOKEN_EQUAL)) {
     expression(vm);
 //    emitBytes(vm, OP_SET_PROPERTY, name);
     emitByte(vm, OP_SET_PROPERTY);
@@ -622,25 +650,25 @@ static void dot(VM* vm, bool canAssign) {
 
   // Experimental support for ++, +=, -- an -=
   if (canAssign) {
-    if (match(TOKEN_EQUAL)) {
+    if (match(vm, TOKEN_EQUAL)) {
       expression(vm);
       emitBytes(setOp, (uint8_t)name);
-    } else if (match(TOKEN_PLUS_PLUS)) {
+    } else if (match(vm, TOKEN_PLUS_PLUS)) {
       emitBytes(getOp, (uint8_t)name);
       emitByte(OP_INC);
       emitBytes(setOp, (uint8_t)name);
       emitByte(OP_DEC); // Suffix increment, return previous value
-    } else if (match(TOKEN_PLUS_EQUAL)) {
+    } else if (match(vm, TOKEN_PLUS_EQUAL)) {
       emitBytes(getOp, (uint8_t)name);
       expression(vm);
       emitByte(OP_ADD);
       emitBytes(setOp, (uint8_t)name);
-    } else if (match(TOKEN_MINUS_MINUS)) {
+    } else if (match(vm, TOKEN_MINUS_MINUS)) {
       emitBytes(getOp, (uint8_t)name);
       emitByte(OP_DEC);
       emitBytes(setOp, (uint8_t)name);
       emitByte(OP_INC); // Suffix decrement, return previous value
-    } else if (match(TOKEN_MINUS_EQUAL)) {
+    } else if (match(vm, TOKEN_MINUS_EQUAL)) {
       emitBytes(getOp, (uint8_t)name);
       expression(vm);
       emitByte(OP_SUBTRACT);
@@ -656,7 +684,7 @@ static void dot(VM* vm, bool canAssign) {
 
 static void literal(VM* vm, bool canAssign) {
   (unused)canAssign;
-  switch (parser.previous.type) {
+  switch (vm->parser->previous.type) {
     case TOKEN_FALSE: emitByte(vm, OP_FALSE); break;
     case TOKEN_NULL: emitByte(vm, OP_NULL); break;
     case TOKEN_TRUE: emitByte(vm, OP_TRUE); break;
@@ -671,10 +699,10 @@ static void literal(VM* vm, bool canAssign) {
 static void subscr(VM* vm, bool canAssign) {
   int expressions = 0;
   bool colon = false;
-  while (!check(TOKEN_RIGHT_BRACKET)) {
-    if (match(TOKEN_COLON)) {
+  while (!check(vm, TOKEN_RIGHT_BRACKET)) {
+    if (match(vm, TOKEN_COLON)) {
       if (colon == true) {
-        error("Expect only one ':' character. (#subscr)");
+        error(vm, "Expect only one ':' character. (#subscr)");
         return;
       }
       colon = true;
@@ -684,12 +712,12 @@ static void subscr(VM* vm, bool canAssign) {
         expressions++;
       }
     }
-    if (check(TOKEN_RIGHT_BRACKET)) break;
+    if (check(vm, TOKEN_RIGHT_BRACKET)) break;
     expression(vm);
     expressions++;
     if (expressions == 2) break; // We have both an offset and a length
   }
-  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after subscript. (#subscr)");
+  consume(vm, TOKEN_RIGHT_BRACKET, "Expect ']' after subscript. (#subscr)");
   if (colon == true && expressions == 1) {
     // We found a colon but only one expression, length must be NULL
     //printf("compiler:subscr() length is NULL\n");
@@ -699,14 +727,14 @@ static void subscr(VM* vm, bool canAssign) {
   // Now that we have parsed the subscript/slice, let's see which one it is
   // so we can emit the right Opcode
   if (colon) {
-    if (canAssign && match(TOKEN_EQUAL)) {
+    if (canAssign && match(vm, TOKEN_EQUAL)) {
       expression(vm);
       emitByte(vm, OP_SET_SLICE);
     } else {
       emitByte(vm, OP_GET_SLICE);
     }
   } else {
-    if (canAssign && match(TOKEN_EQUAL)) {
+    if (canAssign && match(vm, TOKEN_EQUAL)) {
       expression(vm);
       emitByte(vm, OP_SET_INDEX);
     } else {
@@ -721,18 +749,18 @@ static void subscr(VM* vm, bool canAssign) {
 static void array(VM* vm, bool canAssign) {
   (unused)canAssign;
   int length = 0;
-  if (!check(TOKEN_RIGHT_BRACKET)) {
+  if (!check(vm, TOKEN_RIGHT_BRACKET)) {
     do {
-      if (match(TOKEN_RIGHT_BRACKET)) break; // Ignore lingering comma
+      if (match(vm, TOKEN_RIGHT_BRACKET)) break; // Ignore lingering comma
       expression(vm);
       length++;
       if (length > 255) {
-        error("An array constant can not have more than 255 elements.");
+        error(vm, "An array constant can not have more than 255 elements.");
         return;
       }
-    } while (match(TOKEN_COMMA));
+    } while (match(vm, TOKEN_COMMA));
   }
-  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after array elements. (#array)");
+  consume(vm, TOKEN_RIGHT_BRACKET, "Expect ']' after array elements. (#array)");
   emitBytes(vm, OP_MAKE_ARRAY, length);
 }
 
@@ -740,14 +768,14 @@ static void array(VM* vm, bool canAssign) {
 static void grouping(VM* vm, bool canAssign) {
   (unused)canAssign;
   expression(vm);
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
 
 // FIXME: Limited to 32 bit numbers
 static void b2number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(parser.previous.start+2, NULL, 2); // +2 = skip '0b' prefix
+  double value = (double) strtol(vm->parser->previous.start+2, NULL, 2); // +2 = skip '0b' prefix
   emitConstant(vm, NUMBER_VAL(value));
 }
 
@@ -755,14 +783,14 @@ static void b2number(VM* vm, bool canAssign) {
 // FIXME: Limited to 32 bit numbers
 static void b8number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(parser.previous.start, NULL, 8);
+  double value = (double) strtol(vm->parser->previous.start, NULL, 8);
   emitConstant(vm, NUMBER_VAL(value));
 }
 
 
 static void b10number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = strtod(parser.previous.start, NULL);
+  double value = strtod(vm->parser->previous.start, NULL);
   emitConstant(vm, NUMBER_VAL(value));
 }
 
@@ -770,7 +798,7 @@ static void b10number(VM* vm, bool canAssign) {
 // FIXME: Limited to 32 bit numbers
 static void b16number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(parser.previous.start+2, NULL, 16); // +2 = skip '0x' prefix
+  double value = (double) strtol(vm->parser->previous.start+2, NULL, 16); // +2 = skip '0x' prefix
   emitConstant(vm, NUMBER_VAL(value));
 }
 
@@ -842,9 +870,9 @@ int utf8_encode(char *out, uint32_t utf) {
 
 static void string(VM* vm, bool canAssign) {
   (unused)canAssign;
-  int i_len = parser.previous.length - 2; // -2: Leading and trailing quotes
+  int i_len = vm->parser->previous.length - 2; // -2: Leading and trailing quotes
   //printf("compiler:string() i_len=%d\n", i_len);
-  const char* i_str = parser.previous.start + 1; // +1: Skip the leading quote
+  const char* i_str = vm->parser->previous.start + 1; // +1: Skip the leading quote
   char* o_str = malloc(i_len*sizeof(char) + 1);
   int i=0;
   int o=0;
@@ -894,8 +922,8 @@ static void string(VM* vm, bool canAssign) {
   }
   o_str[o] = '\0';
 
-  //emitConstant(OBJ_VAL(copyString(parser.previous.start + 1,
-  //                                parser.previous.length - 2)));
+  //emitConstant(OBJ_VAL(copyString(vm->parser->previous.start + 1,
+  //                                vm->parser->previous.length - 2)));
   emitConstant(vm, OBJ_VAL(copyString(vm, o_str, o)));
 #ifdef DEBUG_TRACE_MEMORY_VERBOSE
   printf("compiler:string() free(%p) // temp buffer\n", (void*)o_str );
@@ -905,11 +933,13 @@ static void string(VM* vm, bool canAssign) {
 
 static void namedVariable(VM* vm, Token name, bool canAssign) {
   uint8_t getOp, setOp;
-  int arg = resolveLocal(current, &name);
+//  int arg = resolveLocal(current, &name);
+  int arg = resolveLocal(vm, vm->compiler, &name);
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
-  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+//  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+  } else if ((arg = resolveUpvalue(vm, vm->compiler, &name)) != -1) {
     getOp = OP_GET_UPVALUE;
     setOp = OP_SET_UPVALUE;
   } else {
@@ -920,7 +950,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 
 
   // Original code
-//  if (canAssign && match(TOKEN_EQUAL)) {
+//  if (canAssign && match(vm, TOKEN_EQUAL)) {
 //    expression(vm);
 //    emitBytes(setOp, (uint8_t)arg);
 //  } else {
@@ -929,12 +959,12 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 
   // Experimental support for ++, +=, -- an -=
   if (canAssign) {
-    if (match(TOKEN_EQUAL)) {
+    if (match(vm, TOKEN_EQUAL)) {
       expression(vm);
       //emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-    } else if (match(TOKEN_PLUS_PLUS)) {
+    } else if (match(vm, TOKEN_PLUS_PLUS)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -943,7 +973,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
       emitByte(vm, setOp);
       emitWord(vm, arg);
       emitByte(vm, OP_DEC); // Suffix increment, return previous value
-    } else if (match(TOKEN_PLUS_EQUAL)) {
+    } else if (match(vm, TOKEN_PLUS_EQUAL)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -953,7 +983,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 //      emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-    } else if (match(TOKEN_MINUS_MINUS)) {
+    } else if (match(vm, TOKEN_MINUS_MINUS)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -962,7 +992,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
       emitByte(vm, setOp);
       emitWord(vm, arg);
       emitByte(vm, OP_INC); // Suffix decrement, return previous value
-    } else if (match(TOKEN_MINUS_EQUAL)) {
+    } else if (match(vm, TOKEN_MINUS_EQUAL)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -972,7 +1002,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 //      emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-    } else if (match(TOKEN_STAR_EQUAL)) {
+    } else if (match(vm, TOKEN_STAR_EQUAL)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -982,7 +1012,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 //      emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-    } else if (match(TOKEN_SLASH_EQUAL)) {
+    } else if (match(vm, TOKEN_SLASH_EQUAL)) {
 //      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
@@ -1006,12 +1036,12 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 
 static void variable(VM* vm, bool canAssign) {
   (unused)canAssign;
-  namedVariable(vm, parser.previous, canAssign);
+  namedVariable(vm, vm->parser->previous, canAssign);
 }
 
 static void unary(VM* vm, bool canAssign) {
   (unused)canAssign;
-  TokenType operatorType = parser.previous.type;
+  TokenType operatorType = vm->parser->previous.type;
 
   // Compile the operand.
   parsePrecedence(vm, PREC_UNARY);
@@ -1034,7 +1064,7 @@ static void ternary(VM* vm, bool canAssign) { // aka. conditional()
   int thenJump = emitJump(vm, OP_PJMP_IF_FALSE);
   // Compile the then branch.
   parsePrecedence(vm, PREC_CONDITIONAL);
-  consume(TOKEN_COLON, "Expect ':' after then branch of conditional operator.");
+  consume(vm, TOKEN_COLON, "Expect ':' after then branch of conditional operator.");
   int elseJump = emitJump(vm, OP_JUMP); // Mark end of THEN block
   patchJump(vm, thenJump);
   // Compile the else branch.
@@ -1125,25 +1155,25 @@ ParseRule rules[] = {
 
 // Will only parse expressions HIGHER than specified
 static void parsePrecedence(VM* vm, Precedence precedence) {
-  advance();
-  ParseFn prefixRule = getRule(parser.previous.type)->prefix;
-  //printf("prefixRule for type=%d is rule=%16p\n", parser.previous.type, prefixRule);
+  advance(vm);
+  ParseFn prefixRule = getRule(vm->parser->previous.type)->prefix;
+  //printf("prefixRule for type=%d is rule=%16p\n", vm->parser->previous.type, prefixRule);
   if (prefixRule == NULL) {
-    error("Expect expression.");
+    error(vm, "Expect expression.");
     return;
   }
 
   bool canAssign = precedence <= PREC_ASSIGNMENT;
   prefixRule(vm, canAssign);
 
-  while (precedence <= getRule(parser.current.type)->precedence) {
-    advance();
-    ParseFn infixRule = getRule(parser.previous.type)->infix;
+  while (precedence <= getRule(vm->parser->current.type)->precedence) {
+    advance(vm);
+    ParseFn infixRule = getRule(vm->parser->previous.type)->infix;
     infixRule(vm, canAssign);
   }
 
-  if (canAssign && match(TOKEN_EQUAL)) {
-    error("Invalid assignment target.");
+  if (canAssign && match(vm, TOKEN_EQUAL)) {
+    error(vm, "Invalid assignment target.");
   }
 }
 
@@ -1157,11 +1187,11 @@ static void expression(VM* vm) {
 }
 
 static void block(VM* vm) {
-  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+  while (!check(vm, TOKEN_RIGHT_BRACE) && !check(vm, TOKEN_EOF)) {
     declaration(vm);
   }
 
-  consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+  consume(vm, TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
 static void function(VM* vm, FunctionType type) {
@@ -1170,23 +1200,25 @@ static void function(VM* vm, FunctionType type) {
   beginScope(vm);
 
   // Compile the parameter list.
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
-  if (!check(TOKEN_RIGHT_PAREN)) {
+  consume(vm, TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  if (!check(vm, TOKEN_RIGHT_PAREN)) {
     do {
-      current->function->arity++;
-      if (current->function->arity > 255) {
-        errorAtCurrent("Cannot have more than 255 parameters.");
+//      current->function->arity++;
+      vm->compiler->function->arity++;
+//      if (current->function->arity > 255) {
+      if (vm->compiler->function->arity > 255) {
+        errorAtCurrent(vm, "Cannot have more than 255 parameters.");
       }
 
 //      uint8_t paramConstant = parseVariable(vm, "Expect parameter name.");
       uint16_t paramConstant = parseVariable(vm, "Expect parameter name.");
       defineVariable(vm, paramConstant);
-    } while (match(TOKEN_COMMA));
+    } while (match(vm, TOKEN_COMMA));
   }
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
   // The body.
-  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  consume(vm, TOKEN_LEFT_BRACE, "Expect '{' before function body.");
   block(vm);
 
   // Create the function object.
@@ -1208,9 +1240,9 @@ static void function(VM* vm, FunctionType type) {
 }
 
 static void classDeclaration(VM* vm) {
-  consume(TOKEN_IDENTIFIER, "Expect class name.");
-//  uint8_t nameConstant = identifierConstant(vm, &parser.previous);
-  uint16_t nameConstant = identifierConstant(vm, &parser.previous);
+  consume(vm, TOKEN_IDENTIFIER, "Expect class name.");
+//  uint8_t nameConstant = identifierConstant(vm, &vm->parser->previous);
+  uint16_t nameConstant = identifierConstant(vm, &vm->parser->previous);
   declareVariable(vm);
 
 //  emitBytes(vm, OP_CLASS, nameConstant);
@@ -1218,8 +1250,8 @@ static void classDeclaration(VM* vm) {
   emitWord(vm, nameConstant);
   defineVariable(vm, nameConstant);
 
-  consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
-  consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+  consume(vm, TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  consume(vm, TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 }
 
 static void funDeclaration(VM* vm) {
@@ -1234,25 +1266,27 @@ static void varDeclaration(VM* vm) {
 //  uint8_t global = parseVariable(vm, "Expect variable name.");
   uint16_t global = parseVariable(vm, "Expect variable name.");
 
-  if (match(TOKEN_EQUAL)) {
+  if (match(vm, TOKEN_EQUAL)) {
     expression(vm);
   } else {
     emitByte(vm, OP_NULL);
   }
-  consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+  consume(vm, TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
 
   defineVariable(vm, global);
 }
 
 static void breakStatement(VM* vm) {
   if (innermostBreakScopeStart == -1) {
-    error("Cannot use 'break' outside of a loop or switch.");
+    error(vm, "Cannot use 'break' outside of a loop or switch.");
   }
-  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+  consume(vm, TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
 
   // Discard any locals created inside the loop.
-  for (int i = current->localCount - 1;
-       i >= 0 && current->locals[i].depth > innermostBreakScopeDepth;
+//  for (int i = current->localCount - 1;
+  for (int i = vm->compiler->localCount - 1;
+//       i >= 0 && current->locals[i].depth > innermostBreakScopeDepth;
+       i >= 0 && vm->compiler->locals[i].depth > innermostBreakScopeDepth;
        i--) {
     emitByte(vm, OP_POP);
   }
@@ -1262,13 +1296,15 @@ static void breakStatement(VM* vm) {
 
 static void continueStatement(VM* vm) {
   if (innermostLoopStart == -1) {
-    error("Cannot use 'continue' outside of a loop.");
+    error(vm, "Cannot use 'continue' outside of a loop.");
   }
-  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+  consume(vm, TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
 
   // Discard any locals created inside the loop.
-  for (int i = current->localCount - 1;
-       i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
+//  for (int i = current->localCount - 1;
+//       i >= 0 && current->locals[i].depth > innermostLoopScopeDepth;
+  for (int i = vm->compiler->localCount - 1;
+       i >= 0 && vm->compiler->locals[i].depth > innermostLoopScopeDepth;
        i--) {
     emitByte(vm, OP_POP);
   }
@@ -1279,18 +1315,18 @@ static void continueStatement(VM* vm) {
 
 static void expressionStatement(VM* vm) {
   expression(vm);
-  consume(TOKEN_SEMICOLON, "Expect ';' after expression.(#exprStmt)");
+  consume(vm, TOKEN_SEMICOLON, "Expect ';' after expression.(#exprStmt)");
   emitByte(vm, OP_POP);
 }
 
 static void forStatement(VM* vm) {
   beginScope(vm);
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+  consume(vm, TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
   // Initializer?
-  if (match(TOKEN_SEMICOLON)) {
+  if (match(vm, TOKEN_SEMICOLON)) {
     // No initializer.
-  } else if (match(TOKEN_VAR)) {
+  } else if (match(vm, TOKEN_VAR)) {
     varDeclaration(vm); // E.g. "var i=0"
   } else {
     expressionStatement(vm); // E.g. "i=0"
@@ -1300,25 +1336,27 @@ static void forStatement(VM* vm) {
   // both for "continue" and for the loop itself
   int surroundingLoopStart = innermostLoopStart;
   int surroundingLoopScopeDepth = innermostLoopScopeDepth;
-  innermostLoopStart = currentChunk()->count;
-  innermostLoopScopeDepth = current->scopeDepth;
+  innermostLoopStart = currentChunk(vm)->count;
+//  innermostLoopScopeDepth = current->scopeDepth;
+  innermostLoopScopeDepth = vm->compiler->scopeDepth;
 
   // for "break"
   int surroundingBreakScopeStart = innermostBreakScopeStart;
   int surroundingBreakScopeDepth = innermostBreakScopeDepth;
   int* surroundingBreakJump = innermostBreakJump;
   int surroundingBreakJumps = innermostBreakJumps;
-  innermostBreakScopeStart = currentChunk()->count;
-  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeStart = currentChunk(vm)->count;
+//  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeDepth = vm->compiler->scopeDepth;
   innermostBreakJump = malloc(MAX_BREAKS_PER_SCOPE * sizeof(int));
   //printf("ifStatement() allocated bpjump buffer %p\n", innermostBreakJump);
   innermostBreakJumps = 0;
 
   // Condition?
   int exitJump = -1;
-  if (!match(TOKEN_SEMICOLON)) {
+  if (!match(vm, TOKEN_SEMICOLON)) {
     expression(vm);
-    consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+    consume(vm, TOKEN_SEMICOLON, "Expect ';' after loop condition.");
 
     // Jump out of the loop if the condition is false.
     exitJump = emitJump(vm, OP_PJMP_IF_FALSE);
@@ -1326,15 +1364,15 @@ static void forStatement(VM* vm) {
   }
 
   // Increment?
-  if (!match(TOKEN_RIGHT_PAREN)) {
+  if (!match(vm, TOKEN_RIGHT_PAREN)) {
     // The increment runs _after_ the loop body
     // so we need to jump back and forth a little.
     int bodyJump = emitJump(vm, OP_JUMP); // Jump to just before the loop body
 
-    int incrementStart = currentChunk()->count;
+    int incrementStart = currentChunk(vm)->count;
     expression(vm);
     emitByte(vm, OP_POP);
-    consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+    consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
     //emitLoop(loopStart); // Jump to just before the loop condition
     //loopStart = incrementStart;
@@ -1380,9 +1418,9 @@ static void forStatement(VM* vm) {
 }
 
 static void ifStatement(VM* vm) {
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+  consume(vm, TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
   expression(vm);
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
   int thenJump = emitJump(vm, OP_PJMP_IF_FALSE);
   //emitByte(OP_POP); // We no longer need the jump condition
@@ -1393,26 +1431,27 @@ static void ifStatement(VM* vm) {
   patchJump(vm, thenJump);
   //emitByte(OP_POP); // We no longer need the jump condition
 
-  if (match(TOKEN_ELSE)) statement(vm);
+  if (match(vm, TOKEN_ELSE)) statement(vm);
   patchJump(vm, elseJump);
 }
 
 static void printStatement(VM* vm) {
   expression(vm);
-  consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+  consume(vm, TOKEN_SEMICOLON, "Expect ';' after value.");
   emitByte(vm, OP_PRINT);
 }
 
 static void returnStatement(VM* vm) {
-  if (current->type == TYPE_SCRIPT) {
-    error("Cannot return from top-level code.");
+//  if (current->type == TYPE_SCRIPT) {
+  if (vm->compiler->type == TYPE_SCRIPT) {
+    error(vm, "Cannot return from top-level code.");
   }
 
-  if (match(TOKEN_SEMICOLON)) {
+  if (match(vm, TOKEN_SEMICOLON)) {
     emitReturn(vm);
   } else {
     expression(vm);
-    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+    consume(vm, TOKEN_SEMICOLON, "Expect ';' after return value.");
     emitByte(vm, OP_RETURN);
   }
 }
@@ -1422,10 +1461,10 @@ static void returnStatement(VM* vm) {
 static void switchStatement(VM* vm) {
   beginScope(vm);
 
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
+  consume(vm, TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
   expression(vm);
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after value.");
-  consume(TOKEN_LEFT_BRACE, "Expect '{' before switch cases.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after value.");
+  consume(vm, TOKEN_LEFT_BRACE, "Expect '{' before switch cases.");
 
   int state = 0; // 0: before all cases, 1: before default, 2: after default.
 
@@ -1434,8 +1473,9 @@ static void switchStatement(VM* vm) {
   int surroundingBreakScopeDepth = innermostBreakScopeDepth;
   int* surroundingBreakJump = innermostBreakJump;
   int surroundingBreakJumps = innermostBreakJumps;
-  innermostBreakScopeStart = currentChunk()->count;
-  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeStart = currentChunk(vm)->count;
+//  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeDepth = vm->compiler->scopeDepth;
   innermostBreakJump = malloc(MAX_BREAKS_PER_SCOPE * sizeof(int));
   //printf("switchStatement() allocated bpjump buffer %p\n", innermostBreakJump);
   innermostBreakJumps = 0;
@@ -1443,13 +1483,13 @@ static void switchStatement(VM* vm) {
   int previousCaseSkip = -1;
   int fallThrough = -1;
 
-  while (!match(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+  while (!match(vm, TOKEN_RIGHT_BRACE) && !check(vm, TOKEN_EOF)) {
 
-    if (match(TOKEN_CASE) || match(TOKEN_DEFAULT)) {
-      TokenType caseType = parser.previous.type;
+    if (match(vm, TOKEN_CASE) || match(vm, TOKEN_DEFAULT)) {
+      TokenType caseType = vm->parser->previous.type;
 
       if (state == 2) {
-        error("Cannot have cases after the default case.");
+        error(vm, "Cannot have cases after the default case.");
       }
 
       if (state == 1) {
@@ -1467,7 +1507,7 @@ static void switchStatement(VM* vm) {
         emitByte(vm, OP_DUP); // The comparison will pop the Value so duplicate it
         expression(vm);
 
-        consume(TOKEN_COLON, "Expect ':' after case value.");
+        consume(vm, TOKEN_COLON, "Expect ':' after case value.");
 
         emitByte(vm, OP_EQUAL);
         previousCaseSkip = emitJump(vm, OP_PJMP_IF_FALSE);
@@ -1475,7 +1515,7 @@ static void switchStatement(VM* vm) {
       } else {
         // Default
         state = 2;
-        consume(TOKEN_COLON, "Expect ':' after default.");
+        consume(vm, TOKEN_COLON, "Expect ':' after default.");
         previousCaseSkip = -1;
       }
 
@@ -1488,7 +1528,7 @@ static void switchStatement(VM* vm) {
     } else {
       // Not CASE or DEFAULT so this is a statement inside the current case.
       if (state == 0) {
-        error("Cannot have statements before any case.");
+        error(vm, "Cannot have statements before any case.");
       }
       statement(vm);
     }
@@ -1529,23 +1569,25 @@ static void whileStatement(VM* vm) {
   // both for "continue" and for the loop itself
   int surroundingLoopStart = innermostLoopStart;
   int surroundingLoopScopeDepth = innermostLoopScopeDepth;
-  innermostLoopStart = currentChunk()->count;
-  innermostLoopScopeDepth = current->scopeDepth;
+  innermostLoopStart = currentChunk(vm)->count;
+//  innermostLoopScopeDepth = current->scopeDepth;
+  innermostLoopScopeDepth = vm->compiler->scopeDepth;
 
   // for "break"
   int surroundingBreakScopeStart = innermostBreakScopeStart;
   int surroundingBreakScopeDepth = innermostBreakScopeDepth;
   int* surroundingBreakJump = innermostBreakJump;
   int surroundingBreakJumps = innermostBreakJumps;
-  innermostBreakScopeStart = currentChunk()->count;
-  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeStart = currentChunk(vm)->count;
+//  innermostBreakScopeDepth = current->scopeDepth;
+  innermostBreakScopeDepth = vm->compiler->scopeDepth;
   innermostBreakJump = malloc(MAX_BREAKS_PER_SCOPE * sizeof(int));
   //printf("whileStatement() allocated bpjump buffer %p\n", innermostBreakJump);
   innermostBreakJumps = 0;
 
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+  consume(vm, TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
   expression(vm);
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+  consume(vm, TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
   int exitJump = emitJump(vm, OP_PJMP_IF_FALSE);
 
@@ -1577,13 +1619,13 @@ static void whileStatement(VM* vm) {
 
 // Exit "panic mode" caused by an unexpected token
 // Skip tokens indiscriminately until we reach a semicolon or a statement token.
-static void synchronize() {
-  parser.panicMode = false;
+static void synchronize(VM* vm) {
+  vm->parser->panicMode = false;
 
-  while (parser.current.type != TOKEN_EOF) {
-    if (parser.previous.type == TOKEN_SEMICOLON) return;
+  while (vm->parser->current.type != TOKEN_EOF) {
+    if (vm->parser->previous.type == TOKEN_SEMICOLON) return;
 
-    switch (parser.current.type) {
+    switch (vm->parser->current.type) {
       case TOKEN_CLASS:
       case TOKEN_FUN:
       case TOKEN_VAR:
@@ -1599,45 +1641,45 @@ static void synchronize() {
         ;
     }
 
-    advance();
+    advance(vm);
   }
 }
 
 
 // A DECLARATION is a STATEMENT that assigns a VALUE to an IDENTIFIER
 static void declaration(VM* vm) {
-  if (match(TOKEN_CLASS)) {
+  if (match(vm, TOKEN_CLASS)) {
     classDeclaration(vm);
-  } else if (match(TOKEN_FUN)) {
+  } else if (match(vm, TOKEN_FUN)) {
     funDeclaration(vm);
-  } else if (match(TOKEN_VAR)) {
+  } else if (match(vm, TOKEN_VAR)) {
     varDeclaration(vm);
   } else {
     statement(vm);
   }
 
-  if (parser.panicMode) synchronize();
+  if (vm->parser->panicMode) synchronize(vm);
 }
 
 // A STATEMENT assigns a VALUE to or invokes an IDENTIFIER
 static void statement(VM* vm) {
-  if (match(TOKEN_PRINT)) {
+  if (match(vm, TOKEN_PRINT)) {
     printStatement(vm);
-  } else if (match(TOKEN_BREAK)) {
+  } else if (match(vm, TOKEN_BREAK)) {
     breakStatement(vm);
-  } else if (match(TOKEN_CONTINUE)) {
+  } else if (match(vm, TOKEN_CONTINUE)) {
     continueStatement(vm);
-  } else if (match(TOKEN_FOR)) {
+  } else if (match(vm, TOKEN_FOR)) {
     forStatement(vm);
-  } else if (match(TOKEN_IF)) {
+  } else if (match(vm, TOKEN_IF)) {
     ifStatement(vm);
-  } else if (match(TOKEN_RETURN)) {
+  } else if (match(vm, TOKEN_RETURN)) {
     returnStatement(vm);
-  } else if (match(TOKEN_SWITCH)) {
+  } else if (match(vm, TOKEN_SWITCH)) {
     switchStatement(vm);
-  } else if (match(TOKEN_WHILE)) {
+  } else if (match(vm, TOKEN_WHILE)) {
     whileStatement(vm);
-  } else if (match(TOKEN_LEFT_BRACE)) {
+  } else if (match(vm, TOKEN_LEFT_BRACE)) {
     beginScope(vm);
     block(vm);
     endScope(vm);
@@ -1646,29 +1688,33 @@ static void statement(VM* vm) {
   }
 }
 
-ObjFunction* compile(VM* vm, int fileno, const char* source, char** err) {
+ObjFunction* compile(void* vm, int fileno, const char* source, char** err) {
   initScanner(fileno, source);
   Compiler compiler;
   initCompiler(vm, &compiler, TYPE_SCRIPT);
 
-  parser.hadError = false;
-  parser.panicMode = false;
-  parser.errorBuffer = NULL;
+  ((VM*)vm)->parser = malloc(sizeof(Parser));
+  ((VM*)vm)->parser->hadError = false;
+  ((VM*)vm)->parser->panicMode = false;
+  ((VM*)vm)->parser->errorBuffer = NULL;
 
-  advance();
+  advance(vm);
 
-  while (!match(TOKEN_EOF)) {
+  while (!match(vm, TOKEN_EOF)) {
     declaration(vm);
   }
 
   ObjFunction* function = endCompiler(vm);
-  *err = parser.errorBuffer;
-  return parser.hadError ? NULL : function;
+  *err = ((VM*)vm)->parser->errorBuffer;
+  if (((VM*)vm)->parser->hadError) function = NULL;
+  free(((VM*)vm)->parser);
+  return function;
 }
 
 // Garbage collect compiler Objs
 void markCompilerRoots(void* vm) {
-  Compiler* compiler = current;
+//  Compiler* compiler = current;
+  Compiler* compiler = ((VM*)vm)->compiler;
   while (compiler != NULL) {
     markObject((VM*)vm, (Obj*)compiler->function);
     compiler = compiler->enclosing;

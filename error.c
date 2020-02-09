@@ -8,7 +8,7 @@
 char* vbprintf(char* buf, const char* format, va_list argp) {
   int bufsiz = 0;
   if (buf != NULL) { bufsiz = strlen(buf); }
-  //printf("vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
+  printf("vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
 
   //va_list args;
   //va_start(args, format);
@@ -22,7 +22,7 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
   //va_end (args);
   buf[bufsiz+addsiz] = '\0'; // Terminate
 
-  //printf("vbprintf() buf=%p bufsiz out=%d\n", buf, bufsiz+addsiz);
+  printf("vbprintf() buf=%p bufsiz out=%d\n", buf, bufsiz+addsiz);
   return buf;
 }
 
