@@ -19,10 +19,6 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
   } else {
     char* newbuf = realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
     printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
-    if (newbuf != buf) {
-      memcpy(newbuf, buf, bufsiz);
-      buf = newbuf;
-    }
   }
   printf("error:vbprintf() calling 2nd vsnprintf(%p, %d, \"%s\", %p)\n", buf+bufsiz, addsiz, format, argp);
   vsnprintf(buf+bufsiz, addsiz, format, argp);
