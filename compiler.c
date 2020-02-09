@@ -180,22 +180,27 @@ static void errorAt(VM* vm, Token* token, const char* message) {
 
   printf("compiler:errorAt() vm=%p token=%p message=%s\n", vm, token, message);
   printf("compiler:errorAt() token fileno=%d lineno=%d charno=%d\n", token->fileno, token->lineno, token->charno);
+  printf("compiler:errorAt() call #1\n");
   vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
 
 
   if (token->type == TOKEN_EOF) {
     //fprintf(stderr, " at end");
+    printf("compiler:errorAt() call #2a\n");
     vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at end");
   } else if (token->type == TOKEN_ERROR) {
     // Nothing.
   } else {
     //fprintf(stderr, " at '%.*s'", token->length, token->start);
+    printf("compiler:errorAt() call #2b\n");
     vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at '%.*s'", token->length, token->start);
   }
 
   //fprintf(stderr, ": %s\n", message);
+  printf("compiler:errorAt() call #3\n");
   vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, ": %s\n", message);
   vm->parser->hadError = true;
+  printf("compiler:errorAt() errorBuffer=%s", vm->parser->errorBuffer);
 }
 
 static void error(VM* vm, const char* message) {
