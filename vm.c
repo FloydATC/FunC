@@ -135,7 +135,7 @@ double now() {
   long            ms; // Milliseconds
   time_t          s;  // Seconds
   struct timespec spec;
-
+  double ts;
   clock_gettime(CLOCK_REALTIME, &spec);
 
   s  = spec.tv_sec;
@@ -144,7 +144,9 @@ double now() {
     s++;
     ms = 0;
   }
-  return s + (ms/1000);
+  ts = s + (ms/1000.0);
+  printf("now() = %f\n", ts);
+  return ts;
 }
 
 
