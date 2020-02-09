@@ -145,7 +145,7 @@ double now() {
     ms = 0;
   }
   ts = s + (ms/1000.0);
-  printf("now() = %f\n", ts);
+  //printf("now() = %f\n", ts);
   return ts;
 }
 
