@@ -6,6 +6,8 @@
 
 // Printf appending into a flexible zero terminated buffer
 char* vbprintf(char* buf, const char* format, va_list argp) {
+  va_list argp_copy;
+  va_copy(argp_copy, argp);
   int bufsiz = 0;
   if (buf != NULL) { bufsiz = strlen(buf); }
   printf("error:vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
@@ -21,7 +23,7 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
     printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
   }
   printf("error:vbprintf() calling 2nd vsnprintf(%p, %d, \"%s\", %p)\n", buf+bufsiz, addsiz, format, argp);
-  vsnprintf(buf+bufsiz, addsiz, format, argp);
+  vsnprintf(buf+bufsiz, addsiz, format, argp_copy);
   //va_end (args);
   buf[bufsiz+addsiz] = '\0'; // Terminate
 
