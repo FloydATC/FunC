@@ -12,11 +12,11 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
 
   //va_list args;
   //va_start(args, format);
-  int addsiz = vsnprintf(NULL, 0, format, argp) + 1;
+  int addsiz = vsnprintf(NULL, 0, format, argp);
   if (buf == NULL) {
-    buf = malloc(addsiz*sizeof(char));
+    buf = malloc((addsiz+1)*sizeof(char));
   } else {
-    buf = (char*) realloc(buf, (bufsiz+addsiz)*sizeof(char));
+    buf = (char*) realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
   }
   vsnprintf(buf+bufsiz, addsiz, format, argp);
   //va_end (args);
