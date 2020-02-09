@@ -36,7 +36,7 @@ static void repl(VM* vm) {
       char* err = NULL;
       InterpretResult result = interpret(vm, code, &err);
       if (err != NULL) {
-        printf(err);
+        printf("%s", err);
         //printf("main:repl() free(%p) // error buffer\n", (void*) err);
         //free(err);
         err = NULL;
@@ -108,7 +108,7 @@ static void runFile(VM* vm, const char* path) {
   char* err;
   InterpretResult result = interpret(vm, source, &err);
   if (err != NULL) {
-    printf(err);
+    printf("%s", err);
     //printf("main:repl() free(%p) // error buffer\n", (void*) err);
     //free(err);
     err = NULL;
