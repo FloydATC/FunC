@@ -1715,6 +1715,7 @@ ObjFunction* compile(void* vm, int fileno, const char* source, char** err) {
 void markCompilerRoots(void* vm) {
 //  Compiler* compiler = current;
   Compiler* compiler = ((VM*)vm)->compiler;
+  printf("compiler:markCompilerRoots() vm=%p compiler=%p\n", vm, compiler);
   while (compiler != NULL) {
     markObject((VM*)vm, (Obj*)compiler->function);
     compiler = compiler->enclosing;

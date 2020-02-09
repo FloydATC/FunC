@@ -626,6 +626,9 @@ VM* initVM() {
   initTable(&vm->globals);
   initTable(&vm->strings);
 
+  vm->parser = NULL;
+  vm->compiler = NULL;
+
   defineNative(vm, "clock", clockNative);
   defineNative(vm, "sleep", sleepNative);
   defineNative(vm, "c_test", c_test);
