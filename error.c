@@ -12,18 +12,19 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
 
   //va_list args;
   //va_start(args, format);
-  printf("error:vbprintf() calling vsnprintf(NULL, 0, \"%s\", %p)\n", format, argp);
+  printf("error:vbprintf() calling 1st vsnprintf(NULL, 0, \"%s\", %p)\n", format, argp);
   int addsiz = vsnprintf(NULL, 0, format, argp);
   if (buf == NULL) {
     buf = malloc((addsiz+1)*sizeof(char));
   } else {
-    char* newbuf = (char*) realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
+    char* newbuf = realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
     printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
     if (newbuf != buf) {
       memcpy(newbuf, buf, bufsiz);
       buf = newbuf;
     }
   }
+  printf("error:vbprintf() calling 2nd vsnprintf(%p, %d, \"%s\", %p)\n", buf+bufsiz, addsiz, format, argp);
   vsnprintf(buf+bufsiz, addsiz, format, argp);
   //va_end (args);
   buf[bufsiz+addsiz] = '\0'; // Terminate
