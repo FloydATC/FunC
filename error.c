@@ -7,39 +7,39 @@
 // Printf appending into a flexible zero terminated buffer
 char* vbprintf(char* buf, const char* format, va_list argp) {
   va_list argp_copy;
-  va_copy(argp_copy, argp);
+  va_copy(argp_copy, argp); // vsnprintf somehow destroys argp so we need a copy
   int bufsiz = 0;
   if (buf != NULL) { bufsiz = strlen(buf); }
-  printf("error:vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
+  //printf("error:vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
 
   //va_list args;
   //va_start(args, format);
-  printf("error:vbprintf() calling 1st vsnprintf(NULL, 0, \"%s\", %p)\n", format, argp);
+  //printf("error:vbprintf() calling 1st vsnprintf(NULL, 0, \"%s\", %p)\n", format, argp);
   int addsiz = vsnprintf(NULL, 0, format, argp);
   if (buf == NULL) {
     buf = malloc((addsiz+1)*sizeof(char));
   } else {
     char* newbuf = realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
-    printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
+    //printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
     buf = newbuf;
   }
-  printf("error:vbprintf() calling 2nd vsnprintf(%p, %d, \"%s\", %p)\n", buf+bufsiz, addsiz, format, argp);
+  //printf("error:vbprintf() calling 2nd vsnprintf(%p, %d, \"%s\", %p)\n", buf+bufsiz, addsiz, format, argp);
   vsnprintf(buf+bufsiz, addsiz, format, argp_copy);
   //va_end (args);
   buf[bufsiz+addsiz] = '\0'; // Terminate
 
-  printf("error:vbprintf() buf=%p bufsiz out=%d\n", buf, bufsiz+addsiz);
+  //printf("error:vbprintf() buf=%p bufsiz out=%d\n", buf, bufsiz+addsiz);
   return buf;
 }
 
 char* bprintf(char* buf, const char* format, ...)
 {
-  printf("error:bprintf() buf=%p format=%s\n", buf, format);
+  //printf("error:bprintf() buf=%p format=%s\n", buf, format);
 	va_list argp;
 	va_start(argp, format);
 	buf = vbprintf(buf, format, argp);
 	va_end(argp);
-  printf("error:bprintf() returning buf=%p\n", buf);
+  //printf("error:bprintf() returning buf=%p\n", buf);
 	return buf;
 }
 
