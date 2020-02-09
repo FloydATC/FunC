@@ -18,6 +18,7 @@ char* vbprintf(char* buf, const char* format, va_list argp) {
     buf = malloc((addsiz+1)*sizeof(char));
   } else {
     char* newbuf = (char*) realloc(buf, (bufsiz+addsiz+1)*sizeof(char));
+    printf("error:vbprintf() reallocated %p => %p (%d bytes)\n", buf, newbuf, (int)((bufsiz+addsiz+1)*sizeof(char)));
     if (newbuf != buf) {
       memcpy(newbuf, buf, bufsiz);
       buf = newbuf;
