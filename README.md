@@ -39,6 +39,7 @@ would be completely insane! YOU HAVE BEEN WARNED!
 
 Features:
 - arithmetic operators (+, -, *, /)
+- modulo operator (%)
 - built-in support for null, true and false
 - boolean operators (and, or, !)
 - lexical scopes

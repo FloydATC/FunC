@@ -364,6 +364,7 @@ Token scanToken() {
     case '^': return makeToken(TOKEN_CARET);
     case '&': return makeToken(TOKEN_AMPERSAND);
     case '|': return makeToken(TOKEN_PIPE);
+    case '%': return makeToken(TOKEN_PERCENT);
     case '"': return string();
   }
 

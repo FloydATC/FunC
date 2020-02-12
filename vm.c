@@ -901,6 +901,16 @@ InterpretResult run(VM* vm) {
           return INTERPRET_RUNTIME_ERROR;
         }
         break;
+      case OP_MODULO: {
+        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+          runtimeError(vm, "Operand must be a number.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        int b = (int) AS_NUMBER(pop(vm));
+        int a = (int) AS_NUMBER(pop(vm));
+        push(vm, NUMBER_VAL(a % b));
+        break;
+      }
       case OP_NOT:
         push(vm, BOOL_VAL(isFalsey(pop(vm))));
         break;
