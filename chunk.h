@@ -41,6 +41,7 @@ typedef enum {
   OP_SUBTRACT,      // pop b, pop a, push a-b
   OP_MULTIPLY,      // pop b, pop a, push a*b
   OP_DIVIDE,        // pop b, pop a, push a/b
+  OP_MODULO,        // pop b, pop a, push a%b
   OP_NOT,           // pop a, push !a
   OP_NEGATE,        // pop a, push -a
   OP_BIN_NOT,       // pop a, push ~a             NOTE: uint32_t

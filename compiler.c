@@ -606,6 +606,7 @@ static void binary(VM* vm, bool canAssign) {
     case TOKEN_MINUS:           emitByte(vm, OP_SUBTRACT); break;
     case TOKEN_STAR:            emitByte(vm, OP_MULTIPLY); break;
     case TOKEN_SLASH:           emitByte(vm, OP_DIVIDE); break;
+    case TOKEN_PERCENT:         emitByte(vm, OP_MODULO); break;
     case TOKEN_GREATER_GREATER: emitByte(vm, OP_BIN_SHIFTR); break;
     case TOKEN_LESS_LESS:       emitByte(vm, OP_BIN_SHIFTL); break;
     case TOKEN_AMPERSAND:       emitByte(vm, OP_BIN_AND); break;
@@ -1102,6 +1103,7 @@ ParseRule rules[] = {
   { NULL,     ternary, PREC_CONDITIONAL },// TOKEN_QUESTION
   { NULL,     NULL,    PREC_NONE },       // TOKEN_COLON
   { NULL,     NULL,    PREC_NONE },       // TOKEN_HASH
+  { NULL,     binary,  PREC_FACTOR },       // TOKEN_PERCENT
   { unary,    NULL,    PREC_UNARY },      // TOKEN_TILDE
   { NULL,     binary,  PREC_BIN_AND },    // TOKEN_AMPERSAND
   { NULL,     binary,  PREC_BIN_XOR },    // TOKEN_CARET
