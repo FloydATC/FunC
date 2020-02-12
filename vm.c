@@ -640,6 +640,252 @@ VM* initVM() {
 }
 
 
+bool op_divide(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Operands must be numbers.");
+    return false;
+  }
+  double b = AS_NUMBER(pop(vm));
+  double a = AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL(a / b));
+  if (isinf(AS_NUMBER(peek(vm, 0)))) {
+    runtimeError(vm, "Division by zero.");
+    return false;
+  }
+  return true;
+}
+
+bool op_multiply(VM* vm) {
+  // Multiplication may mean different things depending on value types
+  //printf("vm:op_multiply()\n");
+  if (IS_NUMBER(peek(vm, 0)) && IS_NUMBER(peek(vm, 1))) {
+    //printf("vm:op_multiply() both operands are numbers\n");
+    // NUMBER * NUMBER = simple multiplication
+    double b = AS_NUMBER(pop(vm));
+    double a = AS_NUMBER(pop(vm));
+    push(vm, NUMBER_VAL(a * b));
+    return true;
+  }
+
+  if (IS_NUMBER(peek(vm, 1)) && IS_STRING(peek(vm, 0))) {
+    // NUMBER * STRING = repeat string
+    // We prefer the operands in reverse so we swap them
+    Value b = pop(vm);
+    Value a = pop(vm);
+    push(vm, b);
+    push(vm, a);
+    // The repetition will be handled below
+  }
+
+  if (IS_NUMBER(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+    // STRING * NUMBER = repeat string
+    ObjString* a = AS_STRING(peek(vm, 1));
+    int b = (int) AS_NUMBER(peek(vm, 0));
+    int length = a->length * b;
+    printf("vm:op_multiply() repeat string '%s' %d times = %d bytes \n", a->chars, b, length);
+    // Allocate a temp buffer
+    char* tmp = ALLOCATE(vm, char, length + 1);
+    for (int i=0; i<b; i++) {
+      memcpy(tmp+(i*a->length), a->chars, a->length);
+    }
+    tmp[length] = '\0'; // Terminate string
+    // Let the memory manager take ownership of the buffer;
+    // it will either be interned as an ObjString or discarded
+    // Either way, we get a valid ObjString pointer in return
+    ObjString* result = takeString(vm, tmp, length);
+    // We have finished allocating memory so it's safe to pop the values
+    pop(vm);
+    pop(vm);
+    push(vm, OBJ_VAL(result));
+    return true;
+  } else {
+    runtimeError(vm, "Operands can not be multiplied.");
+    return false;
+  }
+  return true;
+}
+
+bool op_add(VM* vm) {
+  if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+    concatenateStrings(vm);
+  } else if (IS_ARRAY(peek(vm, 0)) && IS_ARRAY(peek(vm, 1))) {
+    concatenateArrays(vm);
+  } else if (IS_NUMBER(peek(vm, 0)) && IS_NUMBER(peek(vm, 1))) {
+    double b = AS_NUMBER(pop(vm));
+    double a = AS_NUMBER(pop(vm));
+    push(vm, NUMBER_VAL(a + b));
+  } else {
+    runtimeError(vm, "Operand types can not be added.");
+    return false;
+  }
+  return true;
+}
+
+
+bool op_modulo(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Operand must be a number.");
+    return false;
+  }
+  int b = (int) AS_NUMBER(pop(vm));
+  int a = (int) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL(a % b));
+  return true;
+}
+
+
+bool op_inc(VM* vm) {
+  if (IS_NUMBER(peek(vm, 0))) {
+    double a = AS_NUMBER(pop(vm));
+    push(vm, NUMBER_VAL(a + 1));
+  } else {
+    runtimeError(vm, "Can only increment numbers.");
+    return false;
+  }
+  return true;
+}
+
+
+bool op_dec(VM* vm) {
+  if (IS_NUMBER(peek(vm, 0))) {
+    double a = AS_NUMBER(pop(vm));
+    push(vm, NUMBER_VAL(a - 1));
+  } else {
+    runtimeError(vm, "Can only decrement numbers.");
+    return false;
+  }
+  return true;
+}
+
+
+bool op_negate(VM* vm) {
+  if (IS_NUMBER(peek(vm, 0))) {
+    push(vm, NUMBER_VAL(-AS_NUMBER(pop(vm))));
+  } else if(IS_BOOL(peek(vm, 0))) {
+    push(vm, BOOL_VAL(!AS_BOOL(pop(vm))));
+  } else {
+    runtimeError(vm, "Operand must be a number or boolean.");
+    return false;
+  }
+  return true;
+}
+
+
+bool op_bin_not(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0))) {
+    runtimeError(vm, "Operand must be a number.");
+    return false;
+  }
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (~a)));
+  return true;
+}
+
+
+bool op_bin_shiftl(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Both operands must be numbers.");
+    return false;
+  }
+  uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (a << b)));
+  return true;
+}
+
+
+bool op_bin_shiftr(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Both operands must be numbers.");
+    return false;
+  }
+  uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (a >> b)));
+  return true;
+}
+
+
+bool op_bin_and(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Both operands must be numbers.");
+    return false;
+  }
+  uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (a & b)));
+  return true;
+}
+
+bool op_bin_or(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Both operands must be numbers.");
+    return false;
+  }
+  uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (a | b)));
+  return true;
+}
+
+bool op_bin_xor(VM* vm) {
+  if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
+    runtimeError(vm, "Both operands must be numbers.");
+    return false;
+  }
+  uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
+  uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
+  push(vm, NUMBER_VAL((double) (a ^ b)));
+  return true;
+}
+
+
+bool op_equal(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(valuesEqual(a, b)));
+  return true;
+}
+
+bool op_nequal(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(!valuesEqual(a, b)));
+  return true;
+}
+
+bool op_greater(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(valuesGreater(a, b)));
+  return true;
+}
+
+bool op_gequal(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(valuesEqual(b, a) || valuesGreater(a, b)));
+  return true;
+}
+
+bool op_less(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(valuesGreater(b, a))); // Note: reverse
+  return true;
+}
+
+bool op_lequal(VM* vm) {
+  Value b = pop(vm);
+  Value a = pop(vm);
+  push(vm, BOOL_VAL(valuesEqual(b, a) || valuesGreater(b, a))); // Note: reverse
+  return true;
+}
+
+bool op_not(VM* vm) {
+  push(vm, BOOL_VAL(isFalsey(pop(vm))));
+  return true;
+}
 
 InterpretResult run(VM* vm) {
   CallFrame* frame = &vm->frames[vm->frameCount - 1];
@@ -654,6 +900,11 @@ InterpretResult run(VM* vm) {
 #define READ_CONSTANT() \
     (frame->closure->function->chunk.constants.values[READ_SHORT()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
+
+#define CALL_OP(function) \
+    do { \
+      if (function(vm) == false) return INTERPRET_RUNTIME_ERROR; \
+    } while (false)
 
 #define BINARY_OP(valueType, op) \
     do { \
@@ -837,149 +1088,28 @@ InterpretResult run(VM* vm) {
         push(vm, value);
         break;
       }
-      case OP_EQUAL: {
-        Value b = pop(vm);
-        Value a = pop(vm);
-        push(vm, BOOL_VAL(valuesEqual(a, b)));
-        break;
-      }
-      case OP_NEQUAL: {
-        Value b = pop(vm);
-        Value a = pop(vm);
-        push(vm, BOOL_VAL(!valuesEqual(a, b)));
-        break;
-      }
-      case OP_GREATER:  BINARY_OP(BOOL_VAL, >); break;
-      case OP_GEQUAL:   BINARY_OP(BOOL_VAL, >=); break;
-      case OP_LESS:     BINARY_OP(BOOL_VAL, <); break;
-      case OP_LEQUAL:   BINARY_OP(BOOL_VAL, <=); break;
-      case OP_DUP: {
-        push(vm, peek(vm, 0));
-        break;
-      }
-      case OP_INC: {
-        if (IS_NUMBER(peek(vm, 0))) {
-          double a = AS_NUMBER(pop(vm));
-          push(vm, NUMBER_VAL(a + 1));
-        } else {
-          runtimeError(vm, "Can only increment numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        break;
-      }
-      case OP_DEC: {
-        if (IS_NUMBER(peek(vm, 0))) {
-          double a = AS_NUMBER(pop(vm));
-          push(vm, NUMBER_VAL(a - 1));
-        } else {
-          runtimeError(vm, "Can only decrement numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        break;
-      }
-      case OP_ADD: {
-        if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
-          concatenateStrings(vm);
-        } else if (IS_ARRAY(peek(vm, 0)) && IS_ARRAY(peek(vm, 1))) {
-          concatenateArrays(vm);
-        } else if (IS_NUMBER(peek(vm, 0)) && IS_NUMBER(peek(vm, 1))) {
-          double b = AS_NUMBER(pop(vm));
-          double a = AS_NUMBER(pop(vm));
-          push(vm, NUMBER_VAL(a + b));
-        } else {
-          runtimeError(vm, "Operand types can not be added.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        break;
-      }
-      case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
-      case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
-      case OP_DIVIDE:
-        BINARY_OP(NUMBER_VAL, /);
-        if (isinf(AS_NUMBER(peek(vm, 0)))) {
-          runtimeError(vm, "Division by zero.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        break;
-      case OP_MODULO: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Operand must be a number.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        int b = (int) AS_NUMBER(pop(vm));
-        int a = (int) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL(a % b));
-        break;
-      }
-      case OP_NOT:
-        push(vm, BOOL_VAL(isFalsey(pop(vm))));
-        break;
-      case OP_NEGATE:
-        if (!IS_NUMBER(peek(vm, 0))) {
-          runtimeError(vm, "Operand must be a number.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        push(vm, NUMBER_VAL(-AS_NUMBER(pop(vm))));
-        break;
-      case OP_BIN_NOT: {
-        if (!IS_NUMBER(peek(vm, 0))) {
-          runtimeError(vm, "Operand must be a number.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (~a)));
-        break;
-      }
-      case OP_BIN_SHIFTL: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Both operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (a << b)));
-        break;
-      }
-      case OP_BIN_SHIFTR: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Both operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (a >> b)));
-        break;
-      }
-      case OP_BIN_AND: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Both operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (a & b)));
-        break;
-      }
-      case OP_BIN_OR: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Both operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (a | b)));
-        break;
-      }
-      case OP_BIN_XOR: {
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) {
-          runtimeError(vm, "Both operands must be numbers.");
-          return INTERPRET_RUNTIME_ERROR;
-        }
-        uint32_t b = (uint32_t) AS_NUMBER(pop(vm));
-        uint32_t a = (uint32_t) AS_NUMBER(pop(vm));
-        push(vm, NUMBER_VAL((double) (a ^ b)));
-        break;
-      }
+      case OP_EQUAL:      CALL_OP(op_equal); break;
+      case OP_NEQUAL:     CALL_OP(op_nequal); break;
+      case OP_GREATER:    CALL_OP(op_greater); break;
+      case OP_GEQUAL:     CALL_OP(op_gequal); break;
+      case OP_LESS:       CALL_OP(op_less); break;
+      case OP_LEQUAL:     CALL_OP(op_lequal); break;
+      case OP_DUP:        push(vm, peek(vm, 0)); break;
+      case OP_INC:        CALL_OP(op_inc); break;
+      case OP_DEC:        CALL_OP(op_dec); break;
+      case OP_ADD:        CALL_OP(op_add); break;
+      case OP_SUBTRACT:   BINARY_OP(NUMBER_VAL, -); break;
+      case OP_MULTIPLY:   CALL_OP(op_multiply); break;
+      case OP_DIVIDE:     CALL_OP(op_divide); break;
+      case OP_MODULO:     CALL_OP(op_modulo); break;
+      case OP_NOT:        CALL_OP(op_not); break;
+      case OP_NEGATE:     CALL_OP(op_negate); break;
+      case OP_BIN_NOT:    CALL_OP(op_bin_not); break;
+      case OP_BIN_SHIFTL: CALL_OP(op_bin_shiftl); break;
+      case OP_BIN_SHIFTR: CALL_OP(op_bin_shiftr); break;
+      case OP_BIN_AND:    CALL_OP(op_bin_and); break;
+      case OP_BIN_OR:     CALL_OP(op_bin_or); break;
+      case OP_BIN_XOR:    CALL_OP(op_bin_xor); break;
       case OP_PRINT: {
         printValue(pop(vm));
         printf("\n");

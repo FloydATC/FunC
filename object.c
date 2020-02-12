@@ -300,4 +300,7 @@ Value getObjectType(void* vm, Value value) {
 }
 
 
+bool objectsGreater(Obj* a, Obj* b) {
+  return false; // TODO
+}
 

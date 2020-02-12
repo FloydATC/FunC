@@ -53,6 +53,7 @@ typedef struct {
 } ValueArray;
 
 bool valuesEqual(Value a, Value b);
+bool valuesGreater(Value a, Value b);
 void initValueArray(ValueArray* array);
 void writeValueArray(void* vm, ValueArray* array, Value value);
 void freeValueArray(void* vm, ValueArray* array);

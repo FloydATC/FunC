@@ -70,6 +70,20 @@ bool valuesEqual(Value a, Value b) {
   return false;
 }
 
+bool valuesGreater(Value a, Value b) {
+  if (a.type != b.type) return false;
+  // Return true if a is greater than b
+
+  switch (a.type) {
+    case VAL_BOOL:   return false; // Booleans have no sense of less/greater
+    case VAL_NULL:    return false; // Null has no value
+    case VAL_NUMBER: return AS_NUMBER(a) > AS_NUMBER(b);
+    // All string objects are unique
+    // This means we don't have to compare each character
+    case VAL_OBJ:    return objectsGreater(AS_OBJ(a), AS_OBJ(b));
+  }
+  return false;
+}
 
 // Return user visible types for each type of object Value
 Value getValueType(void* vm, Value value) {

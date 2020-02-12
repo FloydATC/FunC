@@ -122,6 +122,7 @@ ObjUpvalue* newUpvalue(void* vm, Value* slot);
 Value getObjectType(void* vm, Value value);
 void printObject(Value value);
 void printObjectType(ObjType type);
+bool objectsGreater(Obj* a, Obj* b);
 
 static inline bool isObjType(Value value, ObjType type) {
   return IS_OBJ(value) && AS_OBJ(value)->type == type;
