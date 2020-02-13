@@ -124,7 +124,7 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
 }
 
 
-// Native C method: STRING.substr_at()
+// Native C method: STRING.substr()
 static bool string_substr(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   if (argCount != 2) {
     runtimeError(vm, "Method takes 2 arguments, got %d.", argCount);
@@ -133,12 +133,20 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
   ObjString* string = AS_STRING(receiver);
 
   int offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
+  printf("pre check offset=%d string->length=%d\n", offset, string->length);
   offset = check_offset(offset, string->length);
+  printf("post check offset=%d\n", offset);
   if (offset == -1) { runtimeError(vm, "Offset out of range."); return false; }
 
   int length = IS_NULL(args[1]) ? string->length - offset : (int) AS_NUMBER(args[1]);
   length = check_length(length, offset, string->length);
   if (length == -1) { runtimeError(vm, "Length out of range."); return false; }
+  if (length == 0) {
+    // If calculated length is zero, return empty string
+    ObjString* substr = copyString(vm, "", 0);
+    *result = OBJ_VAL(substr);
+    return true;
+  }
 
   int begin = -1;
   int chars = 0;
