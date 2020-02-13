@@ -7,6 +7,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "memory.h"
+#include "number.h"
 #include "scanner.h"
 #include "object.h"
 #include "vm.h"
@@ -782,7 +783,8 @@ static void grouping(VM* vm, bool canAssign) {
 // FIXME: Limited to 32 bit numbers
 static void b2number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(vm->parser->previous.start+2, NULL, 2); // +2 = skip '0b' prefix
+//  double value = (double) strtol(vm->parser->previous.start+2, NULL, 2); // +2 = skip '0b' prefix
+  double value = str_to_double(vm->parser->previous.start+2, vm->parser->previous.length-2, 2); // +2 = skip '0b' prefix
   emitConstant(vm, NUMBER_VAL(value));
 }
 
@@ -790,14 +792,16 @@ static void b2number(VM* vm, bool canAssign) {
 // FIXME: Limited to 32 bit numbers
 static void b8number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(vm->parser->previous.start, NULL, 8);
+//  double value = (double) strtol(vm->parser->previous.start, NULL, 8);
+  double value = str_to_double(vm->parser->previous.start, vm->parser->previous.length, 8);
   emitConstant(vm, NUMBER_VAL(value));
 }
 
 
 static void b10number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = strtod(vm->parser->previous.start, NULL);
+//  double value = strtod(vm->parser->previous.start, NULL);
+  double value = str_to_double(vm->parser->previous.start, vm->parser->previous.length, 10);
   emitConstant(vm, NUMBER_VAL(value));
 }
 
@@ -805,7 +809,8 @@ static void b10number(VM* vm, bool canAssign) {
 // FIXME: Limited to 32 bit numbers
 static void b16number(VM* vm, bool canAssign) {
   (unused)canAssign;
-  double value = (double) strtol(vm->parser->previous.start+2, NULL, 16); // +2 = skip '0x' prefix
+//  double value = (double) strtol(vm->parser->previous.start+2, NULL, 16); // +2 = skip '0x' prefix
+  double value = str_to_double(vm->parser->previous.start+2, vm->parser->previous.length-2, 16); // +2 = skip '0x' prefix
   emitConstant(vm, NUMBER_VAL(value));
 }
 

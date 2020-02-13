@@ -682,7 +682,7 @@ bool op_multiply(VM* vm) {
     ObjString* a = AS_STRING(peek(vm, 1));
     int b = (int) AS_NUMBER(peek(vm, 0));
     int length = a->length * b;
-    printf("vm:op_multiply() repeat string '%s' %d times = %d bytes \n", a->chars, b, length);
+    //printf("vm:op_multiply() repeat string '%s' %d times = %d bytes \n", a->chars, b, length);
     // Allocate a temp buffer
     char* tmp = ALLOCATE(vm, char, length + 1);
     for (int i=0; i<b; i++) {
