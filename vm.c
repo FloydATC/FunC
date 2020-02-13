@@ -16,6 +16,7 @@
 #include "object.h"
 #include "objarray.h"
 #include "objstring.h"
+#include "objnumber.h"
 #include "memory.h"
 
 //VM vm;
