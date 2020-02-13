@@ -124,8 +124,8 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
 }
 
 
-// Native C method: STRING.chars_at()
-static bool string_chars_at(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+// Native C method: STRING.substr_at()
+static bool string_substr(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   if (argCount != 2) {
     runtimeError(vm, "Method takes 2 arguments, got %d.", argCount);
     return false;
@@ -213,8 +213,8 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "chars_at", name->length)==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_chars_at));
+  if (strncmp(name->chars, "substr", name->length)==0) {
+    result = OBJ_VAL(newNativeMethod(vm, receiver, string_substr));
     pop(vm);
     push(vm, result);
     return true;
