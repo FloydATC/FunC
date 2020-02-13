@@ -5,7 +5,7 @@ int check_offset(const int input, const int maxlen) {
   int offset = input;
   if (offset < 0) offset = maxlen + offset; // Negative offset = count from right hand side
   if (offset < 0) return -1; // Still negative? Return -1 to signal "invalid"
-  if (offset >= maxlen) return -1; // Beyond end? Return -1 to signal "invalid"
+  if (offset > maxlen) return -1; // Beyond end? Return -1 to signal "invalid"
   return offset;
 }
 
