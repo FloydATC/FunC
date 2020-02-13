@@ -255,40 +255,6 @@ static bool call(VM* vm, ObjClosure* closure, int argCount) {
 
 
 
-// Native C method: NUMBER.base()
-static bool number_base(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method needs one argument.");
-    return false;
-  }
-  if (!IS_NUMBER(args[0])) {
-    runtimeError(vm, "Argument must be a number.");
-    return false;
-  }
-  int base = AS_NUMBER(args[0]);
-  char* chars = "0123456789abcdef";
-  uint64_t input = (uint64_t) AS_NUMBER(receiver);
-  char string[65];
-  int length = 0;
-  if (base < 2 || base > 16) {
-    runtimeError(vm, "Base must be 2-16.");
-    return false;
-  }
-
-  for (int i=64; i>0; i--) {
-    double m = pow(base, i-1);
-    int n = floor(input / m);
-    if (n>0 || length>0 || i==1) { // Skip leading 0 unless it is the only digit
-      string[length++] = chars[n];
-    }
-    input -= m * n;
-  }
-  string[length] = '\0';
-
-  *result = OBJ_VAL(copyString(vm, string, length));
-  return true;
-}
-
 static bool callValue(VM* vm, Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
@@ -592,17 +558,6 @@ static void concatenateArrays(VM* vm) {
 
 
 
-static bool numberProperty(VM* vm, Value receiver, ObjString* name) {
-  Value result;
-  if (strncmp(name->chars, "base", name->length)==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, number_base));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  runtimeError(vm, "Undefined property '%s'.", name->chars);
-  return false;
-}
 
 
 
