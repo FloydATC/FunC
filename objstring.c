@@ -72,8 +72,8 @@ static bool string_byte_at(void* vm, Value receiver, int argCount, Value* args, 
 
 // Native C method: STRING.bytes_at()
 static bool string_bytes_at(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 2) {
-    runtimeError(vm, "Method takes 2 arguments, got %d.", argCount);
+  if (argCount < 1 || argCount > 2) {
+    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount);
     return false;
   }
   ObjString* string = AS_STRING(receiver);
@@ -82,7 +82,8 @@ static bool string_bytes_at(void* vm, Value receiver, int argCount, Value* args,
   offset = check_offset(offset, string->length);
   if (offset == -1) { runtimeError(vm, "Offset out of range."); return false; }
 
-  int length = IS_NULL(args[1]) ? string->length - offset : (int) AS_NUMBER(args[1]);
+  int length = string->length - offset;
+  if (argCount == 2) length = (int) AS_NUMBER(args[1]);
   length = check_length(length, offset, string->length);
   if (length == -1) { runtimeError(vm, "Length out of range."); return false; }
 
@@ -126,8 +127,8 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
 
 // Native C method: STRING.substr()
 static bool string_substr(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 2) {
-    runtimeError(vm, "Method takes 2 arguments, got %d.", argCount);
+  if (argCount < 1 || argCount > 2) {
+    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount);
     return false;
   }
   ObjString* string = AS_STRING(receiver);
@@ -138,7 +139,8 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
   printf("post check offset=%d\n", offset);
   if (offset == -1) { runtimeError(vm, "Offset out of range."); return false; }
 
-  int length = IS_NULL(args[1]) ? string->length - offset : (int) AS_NUMBER(args[1]);
+  int length = string->length - offset;
+  if (argCount == 2) length = (int) AS_NUMBER(args[1]);
   length = check_length(length, offset, string->length);
   if (length == -1) { runtimeError(vm, "Length out of range."); return false; }
   if (length == 0) {
