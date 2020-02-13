@@ -4,6 +4,7 @@
 #include "objstring.h"
 
 #include "index.h"
+#include "number.h"
 #include "vm.h"
 
 bool is_character(char* string, int index) {
@@ -31,6 +32,23 @@ void dump_string(char* string, int length) {
   }
 }
 */
+
+
+// Native C method: STRING.value()
+static bool string_value(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  if (argCount > 1) {
+    runtimeError(vm, "Method takes 1 optional argument, got %d.", argCount);
+    return false;
+  }
+  int radix = 10;
+  if (argCount == 1) {
+    radix = (int) AS_NUMBER(args[0]);
+  }
+  ObjString* string = AS_STRING(receiver);
+
+  *result = NUMBER_VAL(str_to_double(string->chars, string->length, radix));
+  return true;
+}
 
 
 // Native C method: STRING.byte_at()
@@ -166,6 +184,13 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
       if (is_character(string->chars, i)) count++;
     }
     result = NUMBER_VAL(count);
+    pop(vm);
+    push(vm, result);
+    return true;
+  }
+  if (strncmp(name->chars, "value", name->length)==0) {
+    // Return the numeric value of the string in the specified base
+    result = OBJ_VAL(newNativeMethod(vm, receiver, string_value));
     pop(vm);
     push(vm, result);
     return true;
