@@ -14,6 +14,9 @@ int check_length(const int input, const int offset, const int maxlen) {
   int length = input;
   if (length < 0) length = maxlen - offset + length; // Negative length = reduce actual length
   if (length < 0) return -1; // Still negative? Return -1 to signal "invalid"
-  if (length > maxlen - offset) return -1; // Beyond end? Return -1 to signal "invalid"
+  if (length > maxlen - offset) {
+    length = maxlen - offset; // Specifying length greater than actual length yields actual length
+    if (length < 0) length = 0; // ... but actual length may be zero
+  }
   return length;
 }
