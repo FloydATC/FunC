@@ -4,6 +4,7 @@
 #include "objstring.h"
 
 #include "index.h"
+#include "memory.h"
 #include "number.h"
 #include "vm.h"
 
@@ -175,19 +176,34 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
 }
 
 
+// Native C method: STRING.f()
+// Allows the user manual control over %d string formatting
+static bool string_format(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  if (argCount != 1 || !IS_STRING(args[0])) {
+    runtimeError(vm, "Method needs 1 string argument.");
+    return false;
+  }
+  char* format = AS_CSTRING(args[0]);
+  int length = snprintf(NULL, 0, format, AS_CSTRING(receiver));
+  char* string = ALLOCATE(vm, char, length + 1);
+  length = snprintf(string, length, format, AS_CSTRING(receiver));
+
+  *result = OBJ_VAL(copyString(vm, string, length));
+  return true;
+}
 
 
 bool stringProperty(void* vm, Value receiver, ObjString* name) {
   ObjString* string = AS_STRING(receiver);
   Value result;
-  if (strncmp(name->chars, "bytes", name->length)==0) {
+  if (strcmp(name->chars, "bytes")==0) {
     // Return the string length in number of bytes (storage size)
     result = NUMBER_VAL(string->length);
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "chars", name->length)==0) {
+  if (strcmp(name->chars, "chars")==0) {
     // Return the string length in number of characters (print size)
     int count = 0;
     for (int i=0; i<string->length; i++) {
@@ -198,33 +214,39 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "value", name->length)==0) {
+  if (strcmp(name->chars, "value")==0) {
     // Return the numeric value of the string in the specified base
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_value));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "byte_at", name->length)==0) {
+  if (strcmp(name->chars, "byte_at")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_byte_at));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "bytes_at", name->length)==0) {
+  if (strcmp(name->chars, "bytes_at")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_bytes_at));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "char_at", name->length)==0) {
+  if (strcmp(name->chars, "char_at")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_char_at));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "substr", name->length)==0) {
+  if (strcmp(name->chars, "substr")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_substr));
+    pop(vm);
+    push(vm, result);
+    return true;
+  }
+  if (strcmp(name->chars, "f")==0) {
+    result = OBJ_VAL(newNativeMethod(vm, receiver, string_format));
     pop(vm);
     push(vm, result);
     return true;

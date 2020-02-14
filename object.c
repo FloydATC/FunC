@@ -300,7 +300,15 @@ Value getObjectType(void* vm, Value value) {
 }
 
 
+// Comparing certain objects with > >= < <= allows for sorting
+// Note: Called via value:valuesGreater() for Obj values
+// Future enhancement: Substitute strcmp() for something that understands UTF8 and locales
 bool objectsGreater(Obj* a, Obj* b) {
-  return false; // TODO
+  if (a->type != b->type) return false; // Dissimilar types have no sort order
+  switch (a->type) {
+    case OBJ_ARRAY: return ((ObjArray*)a)->length > ((ObjArray*)b)->length; // Sort arrays by length
+    case OBJ_STRING: return (strcmp(((ObjString*)a)->chars, ((ObjString*)b)->chars) > 0); // Sort strings using strcmp()
+    default: return false; // Other objects have no defined sort order
+  }
 }
 

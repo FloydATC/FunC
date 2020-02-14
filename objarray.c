@@ -258,55 +258,55 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
 bool arrayProperty(void* vm, Value receiver, ObjString* name) {
   ObjArray* array = AS_ARRAY(receiver);
   Value result;
-  if (strncmp(name->chars, "length", name->length)==0) {
+  if (strcmp(name->chars, "length")==0) {
     result = NUMBER_VAL(array->length);
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "shift", name->length)==0) {
+  if (strcmp(name->chars, "shift")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_shift));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "unshift", name->length)==0) {
+  if (strcmp(name->chars, "unshift")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_unshift));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "pop", name->length)==0) {
+  if (strcmp(name->chars, "pop")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_pop));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "push", name->length)==0) {
+  if (strcmp(name->chars, "push")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_push));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "fill", name->length)==0) {
+  if (strcmp(name->chars, "fill")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_fill));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "size", name->length)==0) {
+  if (strcmp(name->chars, "size")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_size));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "flat", name->length)==0) {
+  if (strcmp(name->chars, "flat")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_flat));
     pop(vm);
     push(vm, result);
     return true;
   }
-  if (strncmp(name->chars, "join", name->length)==0) {
+  if (strcmp(name->chars, "join")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, array_join));
     pop(vm);
     push(vm, result);
