@@ -20,6 +20,12 @@ static bool number_base(void* vm, Value receiver, int argCount, Value* args, Val
     runtimeError(vm, "Argument must be a number.");
     return false;
   }
+  int radix = AS_NUMBER(args[0]);
+  double number = AS_NUMBER(receiver);
+  char* string = NULL;
+  int length = double_to_str(number, &string, radix);
+
+/*
   int base = AS_NUMBER(args[0]);
   char* chars = "0123456789abcdef";
   uint64_t input = (uint64_t) AS_NUMBER(receiver);
@@ -39,6 +45,7 @@ static bool number_base(void* vm, Value receiver, int argCount, Value* args, Val
     input -= m * n;
   }
   string[length] = '\0';
+*/
 
   *result = OBJ_VAL(copyString(vm, string, length));
   return true;

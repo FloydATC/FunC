@@ -780,7 +780,6 @@ static void grouping(VM* vm, bool canAssign) {
 }
 
 
-// FIXME: Limited to 32 bit numbers
 static void b2number(VM* vm, bool canAssign) {
   (unused)canAssign;
 //  double value = (double) strtol(vm->parser->previous.start+2, NULL, 2); // +2 = skip '0b' prefix
@@ -789,7 +788,6 @@ static void b2number(VM* vm, bool canAssign) {
 }
 
 
-// FIXME: Limited to 32 bit numbers
 static void b8number(VM* vm, bool canAssign) {
   (unused)canAssign;
 //  double value = (double) strtol(vm->parser->previous.start, NULL, 8);
@@ -806,7 +804,6 @@ static void b10number(VM* vm, bool canAssign) {
 }
 
 
-// FIXME: Limited to 32 bit numbers
 static void b16number(VM* vm, bool canAssign) {
   (unused)canAssign;
 //  double value = (double) strtol(vm->parser->previous.start+2, NULL, 16); // +2 = skip '0x' prefix
