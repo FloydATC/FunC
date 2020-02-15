@@ -230,10 +230,10 @@ tests += [
   ["foobar".bytes_at(3,3),  "bar",  is_equal,   true],
   ["foobar".bytes_at(-3,3), "bar",  is_equal,   true],
   ["foobar".bytes_at(-6,3), "foo",  is_equal,   true],
-  ["foobar".chars_at(0,3),  "foo",  is_equal,   true],
-  ["foobar".chars_at(3,3),  "bar",  is_equal,   true],
-  ["foobar".chars_at(-3,3), "bar",  is_equal,   true],
-  ["foobar".chars_at(-6,3), "foo",  is_equal,   true]
+  ["foobar".substr(0,3),  "foo",  is_equal,   true],
+  ["foobar".substr(3,3),  "bar",  is_equal,   true],
+  ["foobar".substr(-3,3), "bar",  is_equal,   true],
+  ["foobar".substr(-6,3), "foo",  is_equal,   true]
   // TODO: add utf8 testing here to show the purpose of .char vs .byte methods
 ];
 

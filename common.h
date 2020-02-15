@@ -21,7 +21,7 @@ typedef void unused; // Silence warnings about unused variables with "(unused) v
 //#define DEBUG_TRACE_MEMORY_VERBOSE
 //#define DEBUG_TRACE_MEMORY_HEXDUMP
 //#define DEBUG_STRESS_GC
-#define DEBUG_LOG_GC
+//#define DEBUG_LOG_GC
 //#define DEBUG_LOG_GC_VERBOSE
 //#define DEBUG_LOG_GC_HEXDUMP
 //#define DEBUG_LOG_GC_EXTREME
