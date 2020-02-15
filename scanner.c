@@ -344,6 +344,26 @@ Token scanToken() {
       if (match('=')) return makeToken(TOKEN_STAR_EQUAL);
       return makeToken(TOKEN_STAR);
     }
+    case '~': {
+      if (match('=')) return makeToken(TOKEN_TILDE_EQUAL);
+      return makeToken(TOKEN_TILDE);
+    }
+    case '^': {
+      if (match('=')) return makeToken(TOKEN_CARET_EQUAL);
+      return makeToken(TOKEN_CARET);
+    }
+    case '&': {
+      if (match('=')) return makeToken(TOKEN_AMP_EQUAL);
+      return makeToken(TOKEN_AMP);
+    }
+    case '|': {
+      if (match('=')) return makeToken(TOKEN_PIPE_EQUAL);
+      return makeToken(TOKEN_PIPE);
+    }
+    case '%': {
+      if (match('=')) return makeToken(TOKEN_PERCENT_EQUAL);
+      return makeToken(TOKEN_PERCENT);
+    }
     case '?': return makeToken(TOKEN_QUESTION);
     case ':': return makeToken(TOKEN_COLON);
     case '!':
@@ -360,11 +380,6 @@ Token scanToken() {
       if (match('>')) return makeToken(TOKEN_GREATER_GREATER);
       return makeToken(TOKEN_GREATER);
     }
-    case '~': return makeToken(TOKEN_TILDE);
-    case '^': return makeToken(TOKEN_CARET);
-    case '&': return makeToken(TOKEN_AMPERSAND);
-    case '|': return makeToken(TOKEN_PIPE);
-    case '%': return makeToken(TOKEN_PERCENT);
     case '"': return string();
   }
 

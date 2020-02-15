@@ -610,7 +610,7 @@ static void binary(VM* vm, bool canAssign) {
     case TOKEN_PERCENT:         emitByte(vm, OP_MODULO); break;
     case TOKEN_GREATER_GREATER: emitByte(vm, OP_BIN_SHIFTR); break;
     case TOKEN_LESS_LESS:       emitByte(vm, OP_BIN_SHIFTL); break;
-    case TOKEN_AMPERSAND:       emitByte(vm, OP_BIN_AND); break;
+    case TOKEN_AMP:             emitByte(vm, OP_BIN_AND); break;
     case TOKEN_CARET:           emitByte(vm, OP_BIN_XOR); break;
     case TOKEN_PIPE:            emitByte(vm, OP_BIN_OR); break;
     default:
@@ -940,6 +940,16 @@ static void string(VM* vm, bool canAssign) {
   free(o_str);
 }
 
+
+static void assignmentOperator(VM* vm, uint8_t getOp, uint8_t setOp, uint8_t numOp, int arg) {
+  emitByte(vm, getOp);
+  emitWord(vm, arg);
+  expression(vm);
+  emitByte(vm, numOp);
+  emitByte(vm, setOp);
+  emitWord(vm, arg);
+}
+
 static void namedVariable(VM* vm, Token name, bool canAssign) {
   uint8_t getOp, setOp;
 //  int arg = resolveLocal(current, &name);
@@ -970,69 +980,39 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
   if (canAssign) {
     if (match(vm, TOKEN_EQUAL)) {
       expression(vm);
-      //emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
     } else if (match(vm, TOKEN_PLUS_PLUS)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
       emitByte(vm, OP_INC);
-//      emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-      emitByte(vm, OP_DEC); // Suffix increment, return previous value
-    } else if (match(vm, TOKEN_PLUS_EQUAL)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
-      emitByte(vm, getOp);
-      emitWord(vm, arg);
-      expression(vm);
-      emitByte(vm, OP_ADD);
-      //emitByte(vm, OP_DUP);
-//      emitBytes(vm, setOp, (uint8_t)arg);
-      emitByte(vm, setOp);
-      emitWord(vm, arg);
+      emitByte(vm, OP_DEC); // Note: Suffix increment, return previous value
     } else if (match(vm, TOKEN_MINUS_MINUS)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
       emitByte(vm, OP_DEC);
-//      emitBytes(vm, setOp, (uint8_t)arg);
       emitByte(vm, setOp);
       emitWord(vm, arg);
-      emitByte(vm, OP_INC); // Suffix decrement, return previous value
+      emitByte(vm, OP_INC); // Note: Suffix decrement, return previous value
+    } else if (match(vm, TOKEN_PLUS_EQUAL)) {
+      assignmentOperator(vm, getOp, setOp, OP_ADD, arg);
     } else if (match(vm, TOKEN_MINUS_EQUAL)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
-      emitByte(vm, getOp);
-      emitWord(vm, arg);
-      expression(vm);
-      emitByte(vm, OP_SUBTRACT);
-      //emitByte(vm, OP_DUP);
-//      emitBytes(vm, setOp, (uint8_t)arg);
-      emitByte(vm, setOp);
-      emitWord(vm, arg);
+      assignmentOperator(vm, getOp, setOp, OP_SUBTRACT, arg);
     } else if (match(vm, TOKEN_STAR_EQUAL)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
-      emitByte(vm, getOp);
-      emitWord(vm, arg);
-      expression(vm);
-      emitByte(vm, OP_MULTIPLY);
-      //emitByte(vm, OP_DUP);
-//      emitBytes(vm, setOp, (uint8_t)arg);
-      emitByte(vm, setOp);
-      emitWord(vm, arg);
+      assignmentOperator(vm, getOp, setOp, OP_MULTIPLY, arg);
     } else if (match(vm, TOKEN_SLASH_EQUAL)) {
-//      emitBytes(vm, getOp, (uint8_t)arg);
-      emitByte(vm, getOp);
-      emitWord(vm, arg);
-      expression(vm);
-      emitByte(vm, OP_DIVIDE);
-      //emitByte(vm, OP_DUP);
-//      emitBytes(vm, setOp, (uint8_t)arg);
-      emitByte(vm, setOp);
-      emitWord(vm, arg);
+      assignmentOperator(vm, getOp, setOp, OP_DIVIDE, arg);
+    } else if (match(vm, TOKEN_PERCENT_EQUAL)) {
+      assignmentOperator(vm, getOp, setOp, OP_MODULO, arg);
+    } else if (match(vm, TOKEN_CARET_EQUAL)) {
+      assignmentOperator(vm, getOp, setOp, OP_BIN_XOR, arg);
+    } else if (match(vm, TOKEN_AMP_EQUAL)) {
+      assignmentOperator(vm, getOp, setOp, OP_BIN_AND, arg);
+    } else if (match(vm, TOKEN_PIPE_EQUAL)) {
+      assignmentOperator(vm, getOp, setOp, OP_BIN_OR, arg);
     } else {
-//      emitBytes(vm, getOp, (uint8_t)arg);
       emitByte(vm, getOp);
       emitWord(vm, arg);
     }
@@ -1105,12 +1085,17 @@ ParseRule rules[] = {
   { NULL,     ternary, PREC_CONDITIONAL },// TOKEN_QUESTION
   { NULL,     NULL,    PREC_NONE },       // TOKEN_COLON
   { NULL,     NULL,    PREC_NONE },       // TOKEN_HASH
-  { NULL,     binary,  PREC_FACTOR },       // TOKEN_PERCENT
-  { unary,    NULL,    PREC_UNARY },      // TOKEN_TILDE
-  { NULL,     binary,  PREC_BIN_AND },    // TOKEN_AMPERSAND
-  { NULL,     binary,  PREC_BIN_XOR },    // TOKEN_CARET
-  { NULL,     binary,  PREC_BIN_OR },     // TOKEN_PIPE
+  { NULL,     binary,  PREC_FACTOR },     // TOKEN_PERCENT
+  { NULL,     NULL,    PREC_FACTOR },     // TOKEN_PERCENT_EQUAL
                                           // One or two character tokens.
+  { unary,    NULL,    PREC_UNARY },      // TOKEN_TILDE
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_TILDE_EQUAL
+  { NULL,     binary,  PREC_BIN_AND },    // TOKEN_AMP
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_AMP_EQUAL
+  { NULL,     binary,  PREC_BIN_XOR },    // TOKEN_CARET
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_CARET_EQUAL
+  { NULL,     binary,  PREC_BIN_OR },     // TOKEN_PIPE
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_PIPE_EQUAL
   { unary,    NULL,    PREC_NONE },       // TOKEN_BANG
   { NULL,     binary,  PREC_EQUALITY },   // TOKEN_BANG_EQUAL
   { NULL,     NULL,    PREC_NONE },       // TOKEN_EQUAL
