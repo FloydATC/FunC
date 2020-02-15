@@ -78,7 +78,7 @@ ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_p
 
 
 ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
-  if (want_parts == -1 || want_parts > strlen(string)) want_parts = strlen(string);
+  if (want_parts == -1 || want_parts > (int) strlen(string)) want_parts = strlen(string);
   //printf("objstring:chars_to_array() string=%s want=%d\n", string, want_parts);
   ObjArray* res = newArray(vm);
   res->values = ALLOCATE(vm, Value, want_parts);
