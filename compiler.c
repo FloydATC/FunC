@@ -952,12 +952,10 @@ static void assignmentOperator(VM* vm, uint8_t getOp, uint8_t setOp, uint8_t num
 
 static void namedVariable(VM* vm, Token name, bool canAssign) {
   uint8_t getOp, setOp;
-//  int arg = resolveLocal(current, &name);
   int arg = resolveLocal(vm, vm->compiler, &name);
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
-//  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
   } else if ((arg = resolveUpvalue(vm, vm->compiler, &name)) != -1) {
     getOp = OP_GET_UPVALUE;
     setOp = OP_SET_UPVALUE;
@@ -976,7 +974,7 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
 //    emitBytes(getOp, (uint8_t)arg);
 //  }
 
-  // Experimental support for ++, +=, -- an -=
+  // Experimental support for assignment operators (++, +=, --, -= etc.)
   if (canAssign) {
     if (match(vm, TOKEN_EQUAL)) {
       expression(vm);
@@ -1017,9 +1015,8 @@ static void namedVariable(VM* vm, Token name, bool canAssign) {
       emitWord(vm, arg);
     }
   } else {
-//    emitBytes(vm, getOp, (uint8_t)arg);
-      emitByte(vm, getOp);
-      emitWord(vm, arg);
+    emitByte(vm, getOp);
+    emitWord(vm, arg);
   }
 }
 

@@ -27,7 +27,6 @@ typedef enum {
   INTERPRET_RUNTIME_ERROR,
 } InterpretResult;
 
-//extern VM vm; // Expose the VM state so other modules can access it
 struct Parser;
 struct Compiler;
 

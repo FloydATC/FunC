@@ -2,9 +2,6 @@
 #define clox_value_h
 
 #include "common.h"
-//#include "vm.h"
-
-//struct VM;
 
 typedef struct sObj Obj;
 typedef struct sObjString ObjString;
