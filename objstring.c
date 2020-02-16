@@ -8,7 +8,7 @@
 #include "number.h"
 #include "vm.h"
 
-bool is_character(char* string, int index) {
+bool is_character(const char* string, int index) {
   // chars matching 10xxxxxx are part of an UTF-8 encoding
   // and do not count towards the number of characters in a string
   // Note: Special characters like \n, \s and \t count as characters in this context
@@ -17,13 +17,21 @@ bool is_character(char* string, int index) {
 }
 
 
-int cp_length(char* string, int index) {
+int cp_length(const char* string, int index) {
   int length = 1;
   while (!is_character(string, index + length)) { length++; }
   //printf("objstring:cp_length() index=%d, length=%d\n", index, length);
   return length;
 }
 
+
+int codepoints_in_str(char* string, int length) {
+  int count = 0;
+  for (int i=0; i<length; i++) {
+    if (is_character(string, i)) count++;
+  }
+  return count;
+}
 
 // Count how many times substr occurs in string
 // If substr is empty, return -1
@@ -204,35 +212,43 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
     return false;
   }
   ObjString* string = AS_STRING(receiver);
+  //printf("objstring:string_substr() string=%s\n", string->chars);
+  int codepoints = codepoints_in_str(string->chars, string->length);
 
-  int offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
-  //printf("pre check offset=%d string->length=%d\n", offset, string->length);
-  offset = check_offset(offset, string->length);
+  int want_offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
+  //printf("pre check want_offset=%d string->length=%d\n", want_offset, codepoints);
+  int offset = check_offset(want_offset, codepoints);
   //printf("post check offset=%d\n", offset);
-  if (offset == -1) { runtimeError(vm, "Offset %d out of range.", offset); return false; }
+  if (offset == -1) { runtimeError(vm, "Offset %d out of range.", want_offset); return false; }
 
-  int length = string->length - offset;
-  if (argCount == 2) length = (int) AS_NUMBER(args[1]);
-  length = check_length(length, offset, string->length);
-  if (length == -1) { runtimeError(vm, "Length %d out of range.", length); return false; }
+  int want_length = codepoints - offset;
+  if (argCount == 2) want_length = (int) AS_NUMBER(args[1]);
+  int length = check_length(want_length, offset, codepoints);
+  if (length == -1) { runtimeError(vm, "Length %d out of range.", want_length); return false; }
   if (length == 0) {
     // If calculated length is zero, return empty string
     *result = OBJ_VAL(copyString(vm, "", 0));
     return true;
   }
 
-  int begin = -1;
-  int chars = 0;
+  int at_offset = -1;
+  int at_length = 0;
   int bytes = 0;
+  //printf("objstring:string_substr() string=%s (%d bytes) wanted %d:%d => %d:%d\n",
+  //       string->chars, string->length, want_offset, want_length, offset, length);
   for (int i=0; i<string->length; i++) {
+    //printf("  i=%d\n", i);
     // Find the beginning of the requested codepoint
-    if (is_character(string->chars, i)) begin++;
-    if (begin == offset) {
-      while (chars < length && i+bytes < string->length) {
+    if (is_character(string->chars, i)) at_offset++;
+    //printf("  at_offset=%d target=%d\n", at_offset, offset);
+    if (at_offset == offset) {
+      //printf("  found char offset %d at byte=%d, scanning...\n", offset, i);
+      while (at_length < length && i+bytes < string->length) {
         bytes += cp_length(string->chars, i+bytes);
-        chars++;
+        at_length++;
+        //printf("  bytes= %d at_length=%d target=%d\n", bytes, at_length, length);
       }
-      if (chars < length) { runtimeError(vm, "Length out of range."); return false; }
+      if (at_length < length) { runtimeError(vm, "Length %d exceeded %d.", length, at_length); return false; }
 
       *result = OBJ_VAL(copyString(vm, string->chars + i, bytes));
       return true;
