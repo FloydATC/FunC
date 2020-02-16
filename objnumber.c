@@ -47,7 +47,26 @@ static bool number_format(void* vm, Value receiver, int argCount, Value* args, V
   return true;
 }
 
+/*
 
+sin
+cos
+tan
+asin
+acos
+atan
+atan2
+sinh
+cosh
+tanh
+exp
+log
+log10
+pow
+fmod
+hypot
+
+*/
 
 
 bool numberProperty(void* vm, Value receiver, ObjString* name) {
