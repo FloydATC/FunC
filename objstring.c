@@ -138,9 +138,7 @@ static bool string_byte_at(void* vm, Value receiver, int argCount, Value* args, 
   offset = check_offset(offset, string->length);
   if (offset == -1) { runtimeError(vm, "Index out of range."); return false; }
 
-  ObjString* substr = copyString(vm, string->chars + offset, 1);
-
-  *result = OBJ_VAL(substr);
+  *result = OBJ_VAL(copyString(vm, string->chars + offset, 1));
   return true;
 }
 
@@ -188,8 +186,7 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
     if (is_character(string->chars, i)) begin++;
     if (begin == offset) {
       // Determine byte length of this codepoint
-      ObjString* substr = copyString(vm, string->chars + i, cp_length(string->chars, i));
-      *result = OBJ_VAL(substr);
+      *result = OBJ_VAL(copyString(vm, string->chars + i, cp_length(string->chars, i)));
       return true;
     }
   }
@@ -220,8 +217,7 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
   if (length == -1) { runtimeError(vm, "Length %d out of range.", length); return false; }
   if (length == 0) {
     // If calculated length is zero, return empty string
-    ObjString* substr = copyString(vm, "", 0);
-    *result = OBJ_VAL(substr);
+    *result = OBJ_VAL(copyString(vm, "", 0));
     return true;
   }
 
@@ -238,15 +234,14 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
       }
       if (chars < length) { runtimeError(vm, "Length out of range."); return false; }
 
-      ObjString* substr = copyString(vm, string->chars + i, bytes);
-      *result = OBJ_VAL(substr);
+      *result = OBJ_VAL(copyString(vm, string->chars + i, bytes));
       return true;
     }
   }
 
-  // If we get this far, the scan failed
-  runtimeError(vm, "Invalid index %d.", offset);
-  return false;
+  // If we get this far, return empty string
+  *result = OBJ_VAL(copyString(vm, "", 0));
+  return true;
 }
 
 // Native C method: STRING.split()
