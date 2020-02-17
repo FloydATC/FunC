@@ -23,8 +23,6 @@
 
 #include "utf8.h"
 
-/* is c the start of a utf8 sequence? */
-#define isutf(c) (((c)&0xC0)!=0x80)
 
 static const uint32_t offsetsFromUTF8[6] = {
     0x00000000UL, 0x00003080UL, 0x000E2080UL,
@@ -45,7 +43,7 @@ static const char trailingBytesForUTF8[256] = {
 /* returns length of next utf-8 sequence */
 int u8_seqlen(char *s)
 {
-    return trailingBytesForUTF8[(unsigned int)(unsigned char)s[0]] + 1;
+  return trailingBytesForUTF8[(unsigned int)(unsigned char)s[0]] + 1;
 }
 
 /* conversions without error checking

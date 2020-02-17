@@ -9,30 +9,7 @@
 #include "utf8.h"
 #include "vm.h"
 
-bool is_character(const char* string, int index) {
-  // chars matching 10xxxxxx are part of an UTF-8 encoding
-  // and do not count towards the number of characters in a string
-  // Note: Special characters like \n, \s and \t count as characters in this context
-  //printf("objstring:is_character() index=%d, byte=%x\n", index, (unsigned char) string[index]);
-  return ((unsigned char) string[index] & 192) != 128;
-}
 
-
-int cp_length(const char* string, int index) {
-  int length = 1;
-  while (!is_character(string, index + length)) { length++; }
-  //printf("objstring:cp_length() index=%d, length=%d\n", index, length);
-  return length;
-}
-
-
-int count_codepoints_in_str(char* string, int length) {
-  int count = 0;
-  for (int i=0; i<length; i++) {
-    if (is_character(string, i)) count++;
-  }
-  return count;
-}
 
 // Count how many times substr occurs in string
 // If substr is empty, return -1
@@ -112,7 +89,7 @@ ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
 // INTERNAL DEBUG FUNCTION
 void dump_string(char* string, int length) {
   for (int i=0; i<length; i++) {
-    printf("i=%x byte=%x char=%s\n", i, (unsigned char) string[i], (is_character(string, i) ? "true" : "false"));
+    printf("i=%x byte=%x char=%s\n", i, (unsigned char) string[i], (isutf(string, i) ? "true" : "false"));
   }
 }
 */
@@ -188,21 +165,10 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
   offset = check_offset(offset, string->length);
   if (offset == -1) { runtimeError(vm, "Index out of range."); return false; }
 
-  int begin = -1;
-  //int bytes = 1;
-  for (int i=0; i<string->length; i++) {
-    // Find the beginning of the requested codepoint
-    if (is_character(string->chars, i)) begin++;
-    if (begin == offset) {
-      // Determine byte length of this codepoint
-      *result = OBJ_VAL(copyString(vm, string->chars + i, cp_length(string->chars, i)));
-      return true;
-    }
-  }
-
-  // If we get this far, the scan failed
-  runtimeError(vm, "Invalid index.");
-  return false;
+  int byte_offset = u8_offset(string->chars, offset);
+  int byte_length = u8_seqlen(string->chars+byte_offset);
+  *result = OBJ_VAL(copyString(vm, string->chars+byte_offset, byte_length));
+  return true;
 }
 
 
@@ -213,13 +179,10 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
     return false;
   }
   ObjString* string = AS_STRING(receiver);
-  //printf("objstring:string_substr() string=%s\n", string->chars);
-  int codepoints = count_codepoints_in_str(string->chars, string->length);
+  int codepoints = u8_strlen(string->chars);
 
   int want_offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
-  //printf("pre check want_offset=%d string->length=%d\n", want_offset, codepoints);
   int offset = check_offset(want_offset, codepoints);
-  //printf("post check offset=%d\n", offset);
   if (offset == -1) { runtimeError(vm, "Offset %d out of range.", want_offset); return false; }
 
   int want_length = codepoints - offset;
@@ -232,33 +195,11 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
     return true;
   }
 
-  int at_offset = -1;
-  int at_length = 0;
-  int bytes = 0;
-  //printf("objstring:string_substr() string=%s (%d bytes) wanted %d:%d => %d:%d\n",
-  //       string->chars, string->length, want_offset, want_length, offset, length);
-  for (int i=0; i<string->length; i++) {
-    //printf("  i=%d\n", i);
-    // Find the beginning of the requested codepoint
-    if (is_character(string->chars, i)) at_offset++;
-    //printf("  at_offset=%d target=%d\n", at_offset, offset);
-    if (at_offset == offset) {
-      //printf("  found char offset %d at byte=%d, scanning...\n", offset, i);
-      while (at_length < length && i+bytes < string->length) {
-        bytes += cp_length(string->chars, i+bytes);
-        at_length++;
-        //printf("  bytes= %d at_length=%d target=%d\n", bytes, at_length, length);
-      }
-      if (at_length < length) { runtimeError(vm, "Length %d exceeded %d.", length, at_length); return false; }
-
-      *result = OBJ_VAL(copyString(vm, string->chars + i, bytes));
-      return true;
-    }
-  }
-
-  // If we get this far, return empty string
-  *result = OBJ_VAL(copyString(vm, "", 0));
+  int byte_offset = u8_offset(string->chars, offset);
+  int byte_length = u8_offset(string->chars+byte_offset, length);
+  *result = OBJ_VAL(copyString(vm, string->chars+byte_offset, byte_length));
   return true;
+
 }
 
 // Native C method: STRING.split()
@@ -293,8 +234,6 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
   printf("objstring:string_split() have=%d\n", have_parts);
   if (want_parts == -1 || want_parts > have_parts) want_parts = have_parts;
 
-
-
   *result = OBJ_VAL(split_string(vm, string->chars, delim->chars, want_parts));
   return true;
 
@@ -316,7 +255,7 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     // Return the string length in number of characters (print size)
     int count = 0;
     for (int i=0; i<string->length; i++) {
-      if (is_character(string->chars, i)) count++;
+      if (isutf(string->chars[i])) count++;
     }
     result = NUMBER_VAL(count);
     pop(vm);
