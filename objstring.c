@@ -301,22 +301,6 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
 }
 
 
-// Native C method: STRING.f()
-// Allows the user manual control over %d string formatting
-static bool string_format(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1 || !IS_STRING(args[0])) {
-    runtimeError(vm, "Method needs 1 string argument.");
-    return false;
-  }
-  char* format = AS_CSTRING(args[0]);
-  int length = snprintf(NULL, 0, format, AS_CSTRING(receiver));
-  char* string = ALLOCATE(vm, char, length + 1);
-  length = snprintf(string, length, format, AS_CSTRING(receiver));
-
-  *result = OBJ_VAL(copyString(vm, string, length));
-  return true;
-}
-
 
 bool stringProperty(void* vm, Value receiver, ObjString* name) {
   ObjString* string = AS_STRING(receiver);
@@ -383,12 +367,6 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
   }
   if (strcmp(name->chars, "split")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_split));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "f")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_format));
     pop(vm);
     push(vm, result);
     return true;

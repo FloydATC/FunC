@@ -32,22 +32,6 @@ static bool number_base(void* vm, Value receiver, int argCount, Value* args, Val
 }
 
 
-// Native C method: NUMBER.f()
-// Allows the user manual control over %f or %g number formatting
-static bool number_format(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1 || !IS_STRING(args[0])) {
-    runtimeError(vm, "Method needs 1 string argument.");
-    return false;
-  }
-  char* format = AS_CSTRING(args[0]);
-  int length = snprintf(NULL, 0, format, AS_NUMBER(receiver));
-  char* string = ALLOCATE(vm, char, length + 1);
-  length = snprintf(string, length, format, AS_NUMBER(receiver));
-
-  *result = OBJ_VAL(copyString(vm, string, length));
-  return true;
-}
-
 /*
 
 sin
@@ -112,12 +96,6 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
   }
   if (strcmp(name->chars, "base")==0) {
     result = OBJ_VAL(newNativeMethod(vm, receiver, number_base));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "f")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, number_format));
     pop(vm);
     push(vm, result);
     return true;
