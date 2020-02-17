@@ -205,11 +205,6 @@ void defineNative(VM* vm, const char* name, NativeFn function) {
 }
 
 void freeVM(VM* vm) {
-  if (vm->errbuf != NULL) {
-    //printf("vm.freeVM(%p) freeing error buffer %p\n", (void*)vm, (void*)vm->errbuf);
-    free(vm->errbuf);
-    vm->errbuf = NULL;
-  }
   //printf("vm.freeVM(%p) freeing globals\n", (void*)vm);
   freeTable(vm, &vm->globals);
   //printf("vm.freeVM(%p) freeing strings\n", (void*)vm);
@@ -593,7 +588,6 @@ VM* initVM() {
   defineNative(vm, "sleep", sleepNative);
   defineNative(vm, "c_test", c_test);
 
-  vm->errbuf = NULL;
   return vm;
 }
 
@@ -1162,7 +1156,7 @@ InterpretResult run(VM* vm) {
 #undef BINARY_OP
 }
 
-InterpretResult includeFile(VM* vm, const char* fname, char** err) {
+InterpretResult includeFile(VM* vm, const char* fname) {
   // If already included, return INTERPRET_COMPILED to avoid circular references and redefines
   // ...
 
@@ -1172,13 +1166,13 @@ InterpretResult includeFile(VM* vm, const char* fname, char** err) {
   // At this early testing stage we require FQFN
 
   char* source = readFile(fname);
-  InterpretResult res = interpret(vm, source, err);
+  InterpretResult res = interpret(vm, source);
   printf("main:includeFile() free(%p) // source\n", (void*) source);
   free(source);
   return res;
 }
 
-InterpretResult processDirective(VM* vm, const char* line, int linelen, char** err) {
+InterpretResult processDirective(VM* vm, const char* line, int linelen) {
   InterpretResult res;
   printf("processDirective()\n");
   char* eos = ">"; // Enf-of-string characters
@@ -1193,7 +1187,7 @@ InterpretResult processDirective(VM* vm, const char* line, int linelen, char** e
       strncpy(fname, line+10, fname_len);
       fname[fname_len] = '\0';
       printf("processDirective() Including file \"%s\"\n", fname);
-      res = includeFile(vm, fname, err);
+      res = includeFile(vm, fname);
       printf("main:processDirective() free(%p) // fname\n", (void*) fname);
       free(fname);
       if (res != INTERPRET_COMPILED) { return res; }
@@ -1205,7 +1199,7 @@ InterpretResult processDirective(VM* vm, const char* line, int linelen, char** e
   return INTERPRET_COMPILED;
 }
 
-InterpretResult preprocess(VM* vm, const char* source, char** err) {
+InterpretResult preprocess(VM* vm, const char* source) {
   // Quickly scan for lines that begin with # and process them as directives
   int srclen = strlen(source);
   int ln = 0;
@@ -1214,7 +1208,7 @@ InterpretResult preprocess(VM* vm, const char* source, char** err) {
   for (int i=0; i<srclen; i++) {
     if (source[i] == '\n') {
       if (source[first] == '#') {
-        res = processDirective(vm, source+first, i-first, err);
+        res = processDirective(vm, source+first, i-first);
         if (res != INTERPRET_COMPILED) { return res; }
       }
       ln++;
@@ -1224,18 +1218,13 @@ InterpretResult preprocess(VM* vm, const char* source, char** err) {
   return INTERPRET_COMPILED;
 }
 
-InterpretResult interpret(VM* vm, const char* source, char** err) {
+InterpretResult interpret(VM* vm, const char* source) {
   InterpretResult res;
-  if (vm->errbuf != NULL) {
-    free(vm->errbuf);
-    vm->errbuf = NULL;
-  }
-  res = preprocess(vm, source, &vm->errbuf); // May call interpret() recursively if #include directives are encountered
-  *err = vm->errbuf; // Give caller a pointer to the buffer
+  res = preprocess(vm, source); // May call interpret() recursively if #include directives are encountered
   if (res != INTERPRET_COMPILED) { return res; }
 
   int fileno = -1; // Temp
-  ObjFunction* function = compile(vm, fileno, source, err);
+  ObjFunction* function = compile(vm, fileno, source);
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(vm, OBJ_VAL(function));

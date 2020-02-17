@@ -114,7 +114,6 @@ typedef void (*ParseFn)(VM* vm, bool canAssign);
 typedef struct Parser {
   bool hadError;
   bool panicMode;
-  char* errorBuffer;
   Token current;
   Token previous;
 } Parser;
@@ -178,30 +177,36 @@ static Chunk* currentChunk(VM* vm) {
 static void errorAt(VM* vm, Token* token, const char* message) {
   if (vm->parser->panicMode) return;
   vm->parser->panicMode = true;
+  char* msgbuf = NULL;
 
-  printf("compiler:errorAt() vm=%p token=%p message=%s\n", vm, token, message);
-  printf("compiler:errorAt() token fileno=%d lineno=%d charno=%d\n", token->fileno, token->lineno, token->charno);
-  printf("compiler:errorAt() call #1\n");
-  vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
+  //printf("compiler:errorAt() vm=%p token=%p message=%s\n", vm, token, message);
+  //printf("compiler:errorAt() token fileno=%d lineno=%d charno=%d\n", token->fileno, token->lineno, token->charno);
+  //printf("compiler:errorAt() call #1\n");
+  msgbuf = bprintf(msgbuf, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
 
 
   if (token->type == TOKEN_EOF) {
-    //fprintf(stderr, " at end");
-    printf("compiler:errorAt() call #2a\n");
-    vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at end");
+    //printf("compiler:errorAt() call #2a\n");
+    msgbuf = bprintf(msgbuf, " at end");
   } else if (token->type == TOKEN_ERROR) {
+    //printf("compiler:errorAt() call #2b (TOKEN_ERROR, no further details?)\n");
     // Nothing.
   } else {
-    //fprintf(stderr, " at '%.*s'", token->length, token->start);
-    printf("compiler:errorAt() call #2b\n");
-    vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, " at '%.*s'", token->length, token->start);
+    //printf("compiler:errorAt() call #2c\n");
+    msgbuf = bprintf(msgbuf, " at '%.*s'", token->length, token->start);
   }
 
-  //fprintf(stderr, ": %s\n", message);
-  printf("compiler:errorAt() call #3\n");
-  vm->parser->errorBuffer = bprintf(vm->parser->errorBuffer, ": %s\n", message);
+  //printf("compiler:errorAt() call #3\n");
+  msgbuf = bprintf(msgbuf, ": %s\n", message);
+
+  //printf("compiler:errorAt() msgbuf=%s\n", msgbuf);
+  //printf("compiler:errorAt() error_callback=%p\n", vm->error_callback);
+  if (vm->error_callback != NULL) { vm->error_callback(msgbuf); }
+  printf("%s", msgbuf);
+
+  //printf("compiler:errorAt() freeing msgbuf %p\n", msgbuf);
+  free(msgbuf);
   vm->parser->hadError = true;
-  printf("compiler:errorAt() errorBuffer=%s", vm->parser->errorBuffer);
 }
 
 static void error(VM* vm, const char* message) {
@@ -1680,7 +1685,7 @@ static void statement(VM* vm) {
   }
 }
 
-ObjFunction* compile(void* vm, int fileno, const char* source, char** err) {
+ObjFunction* compile(void* vm, int fileno, const char* source) {
   initScanner(fileno, source);
   Compiler compiler;
   initCompiler(vm, &compiler, TYPE_SCRIPT);
@@ -1688,7 +1693,6 @@ ObjFunction* compile(void* vm, int fileno, const char* source, char** err) {
   ((VM*)vm)->parser = malloc(sizeof(Parser));
   ((VM*)vm)->parser->hadError = false;
   ((VM*)vm)->parser->panicMode = false;
-  ((VM*)vm)->parser->errorBuffer = NULL;
 
   advance(vm);
 
@@ -1697,7 +1701,7 @@ ObjFunction* compile(void* vm, int fileno, const char* source, char** err) {
   }
 
   ObjFunction* function = endCompiler(vm);
-  *err = ((VM*)vm)->parser->errorBuffer;
+
   if (((VM*)vm)->parser->hadError) function = NULL;
   free(((VM*)vm)->parser);
   return function;

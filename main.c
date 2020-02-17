@@ -33,14 +33,7 @@ static void repl(VM* vm) {
     if (strncmp(line, "\n", 1) == 0 || strncmp(line, "\r\n", 1) == 0) {
       // Empty line from STDIN
       if (code == NULL) continue;
-      char* err = NULL;
-      InterpretResult result = interpret(vm, code, &err);
-      if (err != NULL) {
-        printf("%s", err);
-        //printf("main:repl() free(%p) // error buffer\n", (void*) err);
-        //free(err);
-        err = NULL;
-      }
+      InterpretResult result = interpret(vm, code);
       while (result == INTERPRET_COMPILED || result == INTERPRET_RUNNING) {
         //printf("== timeslice begin\n");
         result = run(vm);
@@ -105,14 +98,7 @@ static char* readFile(const char* path) {
 
 static void runFile(VM* vm, const char* path) {
   char* source = readFile(path);
-  char* err;
-  InterpretResult result = interpret(vm, source, &err);
-  if (err != NULL) {
-    printf("%s", err);
-    //printf("main:repl() free(%p) // error buffer\n", (void*) err);
-    //free(err);
-    err = NULL;
-  }
+  InterpretResult result = interpret(vm, source);
   while (result == INTERPRET_COMPILED || result == INTERPRET_RUNNING) {
     result = run(vm);
   }

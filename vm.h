@@ -75,7 +75,7 @@ void defineNative(VM* vm, const char* name, NativeFn function);
 void set_error_callback(VM* vm, ErrorCb ptr);
 void runtimeError(VM* vm, const char* format, ...);
 InterpretResult run(VM* vm);
-InterpretResult interpret(VM* vm, const char* source, char** err);
+InterpretResult interpret(VM* vm, const char* source);
 void push(VM* vm, Value value);
 Value pop(VM* vm);
 

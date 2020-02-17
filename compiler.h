@@ -5,7 +5,7 @@
 #include "object.h"
 
 
-ObjFunction* compile(void* vm, int fileno, const char* source, char** err);
+ObjFunction* compile(void* vm, int fileno, const char* source);
 void markCompilerRoots();
 
 #endif
