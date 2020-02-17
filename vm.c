@@ -54,12 +54,14 @@ void runtimeError(VM* vm, const char* format, ...) {
     // -1 because the IP is sitting on the next instruction to be
     // executed.
     size_t ip = frame->ip - function->chunk.code - 1;
-    int line = function->chunk.lines[ip];
+    //int fileno = function->chunk.files[ip];
+    int lineno = function->chunk.lines[ip];
+    int charno = function->chunk.chars[ip];
     if (function->name == NULL) {
-      msgbuf = bprintf(msgbuf, "line %d\n", line);
+      msgbuf = bprintf(msgbuf, "at %d:%d\n", lineno, charno);
     } else {
       char* fn = function->name->chars;
-      msgbuf = bprintf(msgbuf, "line %d in %s\n", line, fn);
+      msgbuf = bprintf(msgbuf, "%s at %d:%d\n", fn, lineno, charno);
     }
 
   }
