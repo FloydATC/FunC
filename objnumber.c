@@ -6,6 +6,7 @@
 
 #include "memory.h"
 #include "number.h"
+#include "utf8.h"
 #include "vm.h"
 
 
@@ -71,6 +72,16 @@ hypot
 
 bool numberProperty(void* vm, Value receiver, ObjString* name) {
   Value result;
+  if (strcmp(name->chars, "char")==0) {
+    // Return character of a utf8 codepoint
+    int bufsiz = 5;
+    char buf[bufsiz];
+    uint32_t codepoint = (uint32_t) AS_NUMBER(receiver);
+    int length = u8_toutf8(buf, bufsiz, &codepoint, 1);
+    pop(vm);
+    push(vm, OBJ_VAL(copyString(vm, buf, length)));
+    return true;
+  }
   if (strcmp(name->chars, "floor")==0) {
     // Return floor() of a decimal number
     result = NUMBER_VAL(floor(AS_NUMBER(receiver)));
@@ -111,6 +122,6 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
-  runtimeError(vm, "Undefined property '%s'.", name->chars);
+  runtimeError(vm, "Number has no '%s'.", name->chars);
   return false;
 }

@@ -1020,7 +1020,7 @@ InterpretResult run(VM* vm) {
           break;
         }
         if (!IS_INSTANCE(peek(vm, 0))) {
-          runtimeError(vm, "Type does not have properties.");
+          runtimeError(vm, "Type %s has no properties.", getValueTypeString(value));
           return INTERPRET_RUNTIME_ERROR;
         }
         ObjInstance* instance = AS_INSTANCE(peek(vm, 0));

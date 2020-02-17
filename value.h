@@ -57,6 +57,7 @@ void freeValueArray(void* vm, ValueArray* array);
 void printValue(Value value);
 void printValueType(ValueType type);
 Value getValueType(void* vm, Value value);
+char* getValueTypeString(Value value);
 
 
 

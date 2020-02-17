@@ -86,6 +86,17 @@ bool valuesGreater(Value a, Value b) {
 }
 
 // Return user visible types for each type of object Value
+char* getValueTypeString(Value value) {
+  switch (value.type) {
+    case VAL_BOOL: return "boolean";
+    case VAL_NULL: return "null";
+    case VAL_NUMBER: return "number";
+    case VAL_OBJ: return getObjectTypeString(value);
+    default: return "invalid";
+  }
+}
+
+// Return user visible types for each type of object Value as a Value
 Value getValueType(void* vm, Value value) {
   switch (value.type) {
     case VAL_BOOL: return OBJ_VAL(copyString(vm, "boolean", 7));

@@ -312,7 +312,7 @@ bool arrayProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
-  runtimeError(vm, "Undefined property '%s'.", name->chars);
+  runtimeError(vm, "Array has no '%s'.", name->chars);
   return false;
 }
 

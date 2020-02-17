@@ -6,6 +6,7 @@
 #include "index.h"
 #include "memory.h"
 #include "number.h"
+#include "utf8.h"
 #include "vm.h"
 
 bool is_character(const char* string, int index) {
@@ -25,7 +26,7 @@ int cp_length(const char* string, int index) {
 }
 
 
-int codepoints_in_str(char* string, int length) {
+int count_codepoints_in_str(char* string, int length) {
   int count = 0;
   for (int i=0; i<length; i++) {
     if (is_character(string, i)) count++;
@@ -213,7 +214,7 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
   }
   ObjString* string = AS_STRING(receiver);
   //printf("objstring:string_substr() string=%s\n", string->chars);
-  int codepoints = codepoints_in_str(string->chars, string->length);
+  int codepoints = count_codepoints_in_str(string->chars, string->length);
 
   int want_offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
   //printf("pre check want_offset=%d string->length=%d\n", want_offset, codepoints);
@@ -338,6 +339,17 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
+  if (strcmp(name->chars, "code")==0) {
+    // Return the first codepoint value of the string, -1 if string is empty
+    int bufsiz = 2;
+    uint32_t codepoint[bufsiz];
+    //printf("objstring:stringProperty() get codepoint of '%s' (%d bytes)\n", string->chars, string->length);
+    u8_toucs(codepoint, bufsiz, string->chars, string->length);
+    //printf("objstring:stringProperty() result=%d\n", codepoint[0]);
+    pop(vm);
+    push(vm, NUMBER_VAL((double) codepoint[0]));
+    return true;
+  }
   if (strcmp(name->chars, "value")==0) {
     // Return the numeric value of the string in the specified base
     result = OBJ_VAL(newNativeMethod(vm, receiver, string_value));
@@ -382,7 +394,7 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     return true;
   }
 
-  runtimeError(vm, "Undefined property '%s'.", name->chars);
+  runtimeError(vm, "String has no '%s'.", name->chars);
   return false;
 }
 

@@ -282,6 +282,19 @@ void printObject(Value value) {
   }
 }
 
+// Object type names from USER perspective
+char* getObjectTypeString(Value value) {
+  switch (OBJ_TYPE(value)) {
+    case OBJ_CLASS: return "class";
+    case OBJ_INSTANCE: return "instance";
+    case OBJ_ARRAY: return "array";
+    case OBJ_NATIVE:
+    case OBJ_NATIVEMETHOD:
+    case OBJ_CLOSURE: return "function";
+    case OBJ_STRING: return "string";
+    default: return "internal"; // Not actually user visible
+  }
+}
 
 // Return user visible types for each type of object Value
 // This refers to built-in types, not user defined classes/instances
