@@ -1220,11 +1220,11 @@ static void function(VM* vm, FunctionType type) {
 
   // Create the function object.
   ObjFunction* function = endCompiler(vm);
-  printf("EXPERIMENTAL FIX FOR GC BUG: push()\n");
+  //printf("EXPERIMENTAL FIX FOR GC BUG: push()\n");
   push(vm, OBJ_VAL(function)); // EXPERIMENTAL FIX FOR GC BUG
   emitByte(vm, OP_CLOSURE);
   uint16_t constant = makeConstant(vm, OBJ_VAL(function));
-  printf("EXPERIMENTAL FIX FOR GC BUG: pop()\n");
+  //printf("EXPERIMENTAL FIX FOR GC BUG: pop()\n");
   pop(vm); // EXPERIMENTAL FIX FOR GC BUG
 
   emitByte(vm, constant>>8);
