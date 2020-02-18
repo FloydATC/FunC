@@ -15,6 +15,12 @@
     return false; \
   }
 
+#define CHECK_ARG_IS_NUMBER(index) \
+  if (argCount >= index+1 && !IS_NUMBER(args[index])) { \
+    runtimeError(vm, "Argument %d must be a number, got %s.", index+1, getValueTypeString(args[index])); \
+    return false; \
+  }
+
 #define CHECK_ARGS_ZERO_OR_ONE() \
   if (argCount > 1) { \
     runtimeError(vm, "Method takes 1 optional argument, got %d.", argCount); \
@@ -35,47 +41,86 @@
 
 
 // Native C method: NUMBER.base()
-// NOTE: This temporary implementation does not support decimals
-// rewrite to use double_to_str() in number.h when it has been implemented
 static bool number_base(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method needs one argument.");
-    return false;
-  }
-  if (!IS_NUMBER(args[0])) {
-    runtimeError(vm, "Argument must be a number.");
-    return false;
-  }
-  int radix = AS_NUMBER(args[0]);
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_NUMBER(0);
+
   double number = AS_NUMBER(receiver);
+  int radix = AS_NUMBER(args[0]);
+
   char* string = NULL;
   int length = double_to_str(number, &string, radix);
 
-  *result = OBJ_VAL(copyString(vm, string, length));
+  *result = OBJ_VAL(takeString(vm, string, length));
   return true;
 }
 
 
-/*
+// Native C method: NUMBER.atan2()
+static bool number_atan2(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_NUMBER(0);
 
-sin
-cos
-tan
-asin
-acos
-atan
-atan2
-sinh
-cosh
-tanh
-exp
-log
-log10
-pow
-fmod
-hypot
+  double y = AS_NUMBER(receiver);
+  double x = AS_NUMBER(args[0]);
 
-*/
+  *result = NUMBER_VAL(atan2(y, x)); // Note the reversed order
+  return true;
+}
+
+// Native C method: NUMBER.pow()
+static bool number_pow(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_NUMBER(0);
+
+  double x = AS_NUMBER(receiver);
+  double y = AS_NUMBER(args[0]);
+
+  *result = NUMBER_VAL(pow(x, y));
+  return true;
+}
+
+// Native C method: NUMBER.fmod()
+static bool number_fmod(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_NUMBER(0);
+
+  double x = AS_NUMBER(receiver);
+  double y = AS_NUMBER(args[0]);
+
+  *result = NUMBER_VAL(fmod(x, y));
+  return true;
+}
+
+// Native C method: NUMBER.hypot()
+static bool number_hypot(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_NUMBER(0);
+
+  double x = AS_NUMBER(receiver);
+  double y = AS_NUMBER(args[0]);
+
+  *result = NUMBER_VAL(hypot(x, y));
+  return true;
+}
+
+
+
+#define PROPERTY(fn_name,fn_call) \
+  if (strcmp(name->chars, fn_name)==0) { \
+    result = NUMBER_VAL(fn_call(AS_NUMBER(receiver))); \
+    pop(vm); \
+    push(vm, result); \
+    return true; \
+  } \
+
+#define METHOD(fn_name, fn_call) \
+  if (strcmp(name->chars, fn_name)==0) { \
+    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
+    pop(vm); \
+    push(vm, result); \
+    return true; \
+  }
 
 
 bool numberProperty(void* vm, Value receiver, ObjString* name) {
@@ -90,43 +135,40 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, OBJ_VAL(copyString(vm, buf, length)));
     return true;
   }
-  if (strcmp(name->chars, "floor")==0) {
-    // Return floor() of a decimal number
-    result = NUMBER_VAL(floor(AS_NUMBER(receiver)));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "ceil")==0) {
-    // Return ceil() of a decimal number
-    result = NUMBER_VAL(ceil(AS_NUMBER(receiver)));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "sqrt")==0) {
-    // Return sqrt() of a decimal number
-    result = NUMBER_VAL(sqrt(AS_NUMBER(receiver)));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "abs")==0) {
-    // Return abs() of a decimal number
-    result = NUMBER_VAL(fabs(AS_NUMBER(receiver)));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "base")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, number_base));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
+
+  PROPERTY("sin",   sin);
+  PROPERTY("cos",   cos);
+  PROPERTY("tan",   tan);
+  PROPERTY("asin",  asin);
+  PROPERTY("acos",  acos);
+  PROPERTY("atan",  atan);
+  PROPERTY("sinh",  sinh);
+  PROPERTY("cosh",  cosh);
+  PROPERTY("tanh",  tanh);
+  PROPERTY("asinh", asinh);
+  PROPERTY("acosh", acosh);
+  PROPERTY("atanh", atanh);
+  PROPERTY("exp",   exp);
+  PROPERTY("log",   log);
+  PROPERTY("log10", log10);
+  PROPERTY("floor", floor);
+  PROPERTY("ceil",  ceil);
+  PROPERTY("sqrt",  sqrt);
+  PROPERTY("cbrt",  cbrt);
+  PROPERTY("abs",   abs);
+
+  METHOD("base",  number_base);
+  METHOD("atan2", number_atan2);
+  METHOD("pow",   number_pow);
+  METHOD("fmod",  number_fmod);
+  METHOD("hypot", number_hypot);
+
   runtimeError(vm, "Number has no '%s'.", name->chars);
   return false;
 }
+
+#undef PROPERTY
+#undef METHOD
 
 #undef CHECK_ARG_IS_STRING
 #undef CHECK_ARGS_ZERO_OR_ONE
