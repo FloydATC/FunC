@@ -551,7 +551,7 @@ static void markInitialized(VM* vm) {
 
 //static void defineVariable(VM* vm, uint8_t global) {
 static void defineVariable(VM* vm, uint16_t global) {
-  printf("compiler:defineVariable() vm=%p global=%d\n", vm, global);
+  //printf("compiler:defineVariable() vm=%p global=%d\n", vm, global);
 //  if (current->scopeDepth > 0) {
   if (vm->compiler->scopeDepth > 0) {
     markInitialized(vm);
