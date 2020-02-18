@@ -34,6 +34,12 @@
     return false; \
   }
 
+#define CHECK_ARGS_RANGE(min, max) \
+  if (argCount < min || argCount > max) { \
+    runtimeError(vm, "Method takes %d to %d arguments, got %d.", min, max, argCount); \
+    return false; \
+  }
+
 
 
 // Count how many times substr occurs in string
@@ -122,15 +128,24 @@ void dump_string(char* string, int length) {
 
 // Native C method: STRING.value()
 static bool string_value(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  CHECK_ARGS_ZERO_OR_ONE();
+  CHECK_ARGS_RANGE(0,2);
 
-  int radix = 10;
-  if (argCount == 1) {
-    radix = (int) AS_NUMBER(args[0]);
-  }
   ObjString* string = AS_STRING(receiver);
 
-  *result = NUMBER_VAL(str_to_double(string->chars, string->length, radix));
+  int radix = 10;
+  if (argCount >= 1) {
+    radix = (int) AS_NUMBER(args[0]);
+  }
+  int maxlen = string->length;
+  if (argCount >= 2) {
+    maxlen = (int) AS_NUMBER(args[1]);
+  }
+  if (maxlen > string->length) {
+    runtimeError(vm, "Length %d is out of range.", maxlen);
+    return false;
+  }
+
+  *result = NUMBER_VAL(str_to_double(string->chars, maxlen, radix));
   return true;
 }
 
@@ -298,6 +313,13 @@ static bool string_rtrim(void* vm, Value receiver, int argCount, Value* args, Va
   return true;
 }
 
+#define METHOD(fn_name, fn_call) \
+  if (strcmp(name->chars, fn_name)==0) { \
+    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
+    pop(vm); \
+    push(vm, result); \
+    return true; \
+  }
 
 bool stringProperty(void* vm, Value receiver, ObjString* name) {
   ObjString* string = AS_STRING(receiver);
@@ -331,63 +353,25 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, NUMBER_VAL((double) codepoint[0]));
     return true;
   }
-  if (strcmp(name->chars, "value")==0) {
-    // Return the numeric value of the string in the specified base
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_value));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "byte_at")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_byte_at));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "bytes_at")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_bytes_at));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "char_at")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_char_at));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "substr")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_substr));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "split")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_split));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "ltrim")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_ltrim));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "rtrim")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, string_rtrim));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
+
+  METHOD("value",    string_value);
+  METHOD("byte_at",  string_byte_at);
+  METHOD("bytes_at", string_bytes_at);
+  METHOD("char_at",  string_char_at);
+  METHOD("substr",   string_substr);
+  METHOD("split",    string_split);
+  METHOD("ltrim",    string_ltrim);
+  METHOD("rtrim",    string_rtrim);
 
   runtimeError(vm, "String has no '%s'.", name->chars);
   return false;
 }
 
+#undef METHOD
 
 #undef CHECK_ARG_IS_STRING
 #undef CHECK_ARGS_ZERO_OR_ONE
 #undef CHECK_ARGS_ONE_OR_TWO
 #undef CHECK_ARGS_ONE
+#undef CHECK_ARGS_RANGE
 
