@@ -30,6 +30,7 @@ Non-zero 	0	                    Free allocation.
 Non-zero 	Smaller than oldSize 	Shrink existing allocation.
 Non-zero 	Larger than oldSize 	Grow existing allocation.
 */
+void hexdump(const void* data, size_t size);
 void* reallocate(void* vm, void* previous, size_t oldSize, size_t newSize);
 void markObject(void* vm, Obj* object);
 void markValue(void* vm, Value value);
