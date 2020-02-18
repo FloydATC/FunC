@@ -277,6 +277,13 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
   return true;
 }
 
+#define METHOD(fn_name, fn_call) \
+  if (strcmp(name->chars, fn_name)==0) { \
+    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
+    pop(vm); \
+    push(vm, result); \
+    return true; \
+  }
 
 // Hard-coded properties of ObjArray type
 // TODO: Replace the multiple calls to strncpy() with something more efficient
@@ -289,57 +296,21 @@ bool arrayProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
-  if (strcmp(name->chars, "shift")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_shift));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "unshift")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_unshift));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "pop")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_pop));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "push")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_push));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "fill")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_fill));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "size")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_size));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "flat")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_flat));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
-  if (strcmp(name->chars, "join")==0) {
-    result = OBJ_VAL(newNativeMethod(vm, receiver, array_join));
-    pop(vm);
-    push(vm, result);
-    return true;
-  }
+
+  METHOD("shift",   array_shift);
+  METHOD("unshift", array_unshift);
+  METHOD("pop",     array_pop);
+  METHOD("push",    array_push);
+  METHOD("fill",    array_fill);
+  METHOD("size",    array_size);
+  METHOD("flat",    array_flat);
+  METHOD("join",    array_join);
+
   runtimeError(vm, "Array has no '%s'.", name->chars);
   return false;
 }
+
+#undef METHOD
 
 #undef CHECK_ARG_IS_STRING
 #undef CHECK_ARGS_ZERO_OR_ONE
