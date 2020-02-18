@@ -10,6 +10,31 @@
 #include "vm.h"
 
 
+#define CHECK_ARG_IS_STRING(index) \
+  if (argCount >= index+1 && !IS_STRING(args[index])) { \
+    runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ZERO_OR_ONE() \
+  if (argCount > 1) { \
+    runtimeError(vm, "Method takes 1 optional argument, got %d.", argCount); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ONE_OR_TWO() \
+  if (argCount < 1 || argCount > 2) { \
+    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ONE() \
+  if (argCount != 1) { \
+    runtimeError(vm, "Method takes 1 argument, got %d.", argCount); \
+    return false; \
+  }
+
+
 
 // Count how many times substr occurs in string
 // If substr is empty, return -1
@@ -24,7 +49,7 @@ int count_substr(const char* string, const char* substr) {
     pos += sublen;
     count++;
   }
-  printf("objstring:count_substr() %s occurs %d times in %s\n", substr, count, string);
+  //printf("objstring:count_substr() %s occurs %d times in %s\n", substr, count, string);
   return count;
 }
 
@@ -97,10 +122,8 @@ void dump_string(char* string, int length) {
 
 // Native C method: STRING.value()
 static bool string_value(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount > 1) {
-    runtimeError(vm, "Method takes 1 optional argument, got %d.", argCount);
-    return false;
-  }
+  CHECK_ARGS_ZERO_OR_ONE();
+
   int radix = 10;
   if (argCount == 1) {
     radix = (int) AS_NUMBER(args[0]);
@@ -114,10 +137,8 @@ static bool string_value(void* vm, Value receiver, int argCount, Value* args, Va
 
 // Native C method: STRING.byte_at()
 static bool string_byte_at(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method takes 1 argument, got %d.", argCount);
-    return false;
-  }
+  CHECK_ARGS_ONE();
+
   ObjString* string = AS_STRING(receiver);
 
   int offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
@@ -131,10 +152,8 @@ static bool string_byte_at(void* vm, Value receiver, int argCount, Value* args, 
 
 // Native C method: STRING.bytes_at()
 static bool string_bytes_at(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount < 1 || argCount > 2) {
-    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount);
-    return false;
-  }
+  CHECK_ARGS_ONE_OR_TWO();
+
   ObjString* string = AS_STRING(receiver);
 
   int offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
@@ -155,10 +174,8 @@ static bool string_bytes_at(void* vm, Value receiver, int argCount, Value* args,
 
 // Native C method: STRING.char_at()
 static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method takes 1 argument, got %d.", argCount);
-    return false;
-  }
+  CHECK_ARGS_ONE();
+
   ObjString* string = AS_STRING(receiver);
 
   int offset = (IS_NULL(args[0]) ? 0 : (int) AS_NUMBER(args[0]));
@@ -174,10 +191,8 @@ static bool string_char_at(void* vm, Value receiver, int argCount, Value* args, 
 
 // Native C method: STRING.substr()
 static bool string_substr(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount < 1 || argCount > 2) {
-    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount);
-    return false;
-  }
+  CHECK_ARGS_ONE_OR_TWO();
+
   ObjString* string = AS_STRING(receiver);
   int codepoints = u8_strlen(string->chars);
 
@@ -204,14 +219,9 @@ static bool string_substr(void* vm, Value receiver, int argCount, Value* args, V
 
 // Native C method: STRING.split()
 static bool string_split(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount < 1 || argCount > 2) {
-    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount);
-    return false;
-  }
-  if (!IS_STRING(args[0])) {
-    runtimeError(vm, "Argument 1 must be a string.");
-    return false;
-  }
+  CHECK_ARGS_ONE_OR_TWO();
+  CHECK_ARG_IS_STRING(0);
+
   ObjString* delim = AS_STRING(args[0]);
   int want_parts = (argCount == 2 ? AS_NUMBER(args[1]) : -1); // Default (-1) is unlimited
   if (want_parts == 0) {
@@ -221,7 +231,7 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
   }
 
   ObjString* string = AS_STRING(receiver);
-  printf("objstring:string_split() string=%s delim=%s want=%d\n", string->chars, delim->chars, want_parts);
+  //printf("objstring:string_split() string=%s delim=%s want=%d\n", string->chars, delim->chars, want_parts);
 
   // Special case: If length of delimiter is zero, split each char
   if (strlen(delim->chars) == 0) {
@@ -231,7 +241,7 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
 
   // Count how many times delimiter occurs in string
   int have_parts = count_substr(string->chars, delim->chars) + 1;
-  printf("objstring:string_split() have=%d\n", have_parts);
+  //printf("objstring:string_split() have=%d\n", have_parts);
   if (want_parts == -1 || want_parts > have_parts) want_parts = have_parts;
 
   *result = OBJ_VAL(split_string(vm, string->chars, delim->chars, want_parts));
@@ -239,6 +249,54 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
 
 }
 
+
+// Native C method: STRING.ltrim()
+static bool string_ltrim(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ZERO_OR_ONE();
+  CHECK_ARG_IS_STRING(0);
+
+  ObjString* string = AS_STRING(receiver);
+  ObjString* unwanted;
+  if (argCount == 1) {
+    unwanted = AS_STRING(args[0]);
+  } else {
+    unwanted = copyString(vm, " ", 1); // Default is space character
+  }
+  int offset = 0;
+  while (offset < string->length && strchr(unwanted->chars, string->chars[offset])!=NULL) offset++;
+  if (offset > 0) {
+    // Modify input string
+    receiver = OBJ_VAL(copyString(vm, string->chars+offset, string->length-offset));
+  }
+  *result = receiver;
+  return true;
+}
+
+
+
+// Native C method: STRING.rtrim()
+static bool string_rtrim(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ZERO_OR_ONE();
+  CHECK_ARG_IS_STRING(0);
+
+  ObjString* string = AS_STRING(receiver);
+  ObjString* unwanted;
+
+  if (argCount == 1) {
+    unwanted = AS_STRING(args[0]);
+  } else {
+    unwanted = copyString(vm, " ", 1); // Default is space character
+  }
+
+  int newlen = string->length;
+  while (newlen > 0 && strchr(unwanted->chars, string->chars[newlen-1])!=NULL) newlen--;
+  if (newlen < string->length) {
+    // Modify input string
+    receiver = OBJ_VAL(copyString(vm, string->chars, newlen));
+  }
+  *result = receiver;
+  return true;
+}
 
 
 bool stringProperty(void* vm, Value receiver, ObjString* name) {
@@ -310,9 +368,26 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     push(vm, result);
     return true;
   }
+  if (strcmp(name->chars, "ltrim")==0) {
+    result = OBJ_VAL(newNativeMethod(vm, receiver, string_ltrim));
+    pop(vm);
+    push(vm, result);
+    return true;
+  }
+  if (strcmp(name->chars, "rtrim")==0) {
+    result = OBJ_VAL(newNativeMethod(vm, receiver, string_rtrim));
+    pop(vm);
+    push(vm, result);
+    return true;
+  }
 
   runtimeError(vm, "String has no '%s'.", name->chars);
   return false;
 }
 
+
+#undef CHECK_ARG_IS_STRING
+#undef CHECK_ARGS_ZERO_OR_ONE
+#undef CHECK_ARGS_ONE_OR_TWO
+#undef CHECK_ARGS_ONE
 

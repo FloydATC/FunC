@@ -9,6 +9,30 @@
 #include "utf8.h"
 #include "vm.h"
 
+#define CHECK_ARG_IS_STRING(index) \
+  if (argCount >= index+1 && !IS_STRING(args[index])) { \
+    runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ZERO_OR_ONE() \
+  if (argCount > 1) { \
+    runtimeError(vm, "Method takes 1 optional argument, got %d.", argCount); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ONE_OR_TWO() \
+  if (argCount < 1 || argCount > 2) { \
+    runtimeError(vm, "Method takes 1 or 2 arguments, got %d.", argCount); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ONE() \
+  if (argCount != 1) { \
+    runtimeError(vm, "Method takes 1 argument, got %d.", argCount); \
+    return false; \
+  }
+
 
 // Native C method: NUMBER.base()
 // NOTE: This temporary implementation does not support decimals
@@ -103,3 +127,9 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
   runtimeError(vm, "Number has no '%s'.", name->chars);
   return false;
 }
+
+#undef CHECK_ARG_IS_STRING
+#undef CHECK_ARGS_ZERO_OR_ONE
+#undef CHECK_ARGS_ONE_OR_TWO
+#undef CHECK_ARGS_ONE
+
