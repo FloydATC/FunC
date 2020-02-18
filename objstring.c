@@ -265,10 +265,10 @@ static bool string_ltrim(void* vm, Value receiver, int argCount, Value* args, Va
   int offset = 0;
   while (offset < string->length && strchr(unwanted->chars, string->chars[offset])!=NULL) offset++;
   if (offset > 0) {
-    // Modify input string
-    receiver = OBJ_VAL(copyString(vm, string->chars+offset, string->length-offset));
+    *result = OBJ_VAL(copyString(vm, string->chars+offset, string->length-offset));
+  } else {
+    *result = receiver;
   }
-  *result = receiver;
   return true;
 }
 
@@ -291,10 +291,10 @@ static bool string_rtrim(void* vm, Value receiver, int argCount, Value* args, Va
   int newlen = string->length;
   while (newlen > 0 && strchr(unwanted->chars, string->chars[newlen-1])!=NULL) newlen--;
   if (newlen < string->length) {
-    // Modify input string
-    receiver = OBJ_VAL(copyString(vm, string->chars, newlen));
+    *result = OBJ_VAL(copyString(vm, string->chars, newlen));
+  } else {
+    *result = receiver;
   }
-  *result = receiver;
   return true;
 }
 
