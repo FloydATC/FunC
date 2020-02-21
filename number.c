@@ -140,7 +140,7 @@ int double_to_str_dec(double number, char** str) {
   length = snprintf(*str, length, "%f", number);
   (*str)[length] = '\0'; // Terminate
   if (has_decimals(*str)) trim_trailing_zeroes(str);
-  return length;
+  return strlen(*str); // trimming may have changed the length
 }
 
 int double_to_str(double number, char** str, int radix) {
