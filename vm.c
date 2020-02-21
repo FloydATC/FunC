@@ -357,11 +357,13 @@ static bool isFalsey(Value value) {
 
 // String + String = String
 static void concatenateStrings(VM* vm) {
+  //printf("vm:concatenateString()\n");
   // takeString() may trigger GC so peek() instead of pop()
   ObjString* b = AS_STRING(peek(vm, 0));
   ObjString* a = AS_STRING(peek(vm, 1));
 
   int length = a->length + b->length;
+  //printf("vm:concatenateString() length = %d + %d = %d\n", a->length, b->length, length);
   char* chars = ALLOCATE(vm, char, length + 1);
   memcpy(chars, a->chars, a->length);
   memcpy(chars + a->length, b->chars, b->length);

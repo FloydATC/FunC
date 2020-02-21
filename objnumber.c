@@ -50,6 +50,7 @@ static bool number_base(void* vm, Value receiver, int argCount, Value* args, Val
 
   char* string = NULL;
   int length = double_to_str(number, &string, radix);
+  //printf("objnumber:number_base() string=%s, length=%d\n", string, length);
 
   *result = OBJ_VAL(takeString(vm, string, length));
   return true;
