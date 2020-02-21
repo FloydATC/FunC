@@ -6,28 +6,28 @@
 	"memory.h"
 	"vm.h"
 
-1579791489 c:\users\floyd\documents\c\func\chunk.h
+1581516097 c:\users\floyd\documents\c\func\chunk.h
 	"common.h"
 	"value.h"
 
-1581238582 c:\users\floyd\documents\c\func\common.h
+1581763985 c:\users\floyd\documents\c\func\common.h
 	<stdbool.h>
 	<stddef.h>
 	<stdint.h>
 
-1580646566 c:\users\floyd\documents\c\func\value.h
+1581887757 c:\users\floyd\documents\c\func\value.h
 	"common.h"
 
-1579184735 c:\users\floyd\documents\c\func\memory.h
+1582030649 c:\users\floyd\documents\c\func\memory.h
 	"object.h"
 
-1580738713 c:\users\floyd\documents\c\func\object.h
+1581887873 c:\users\floyd\documents\c\func\object.h
 	"chunk.h"
 	"common.h"
 	"table.h"
 	"value.h"
 
-1581179530 c:\users\floyd\documents\c\func\vm.h
+1581968092 c:\users\floyd\documents\c\func\vm.h
 	"compiler.h"
 	"object.h"
 	"table.h"
@@ -37,7 +37,7 @@
 	"common.h"
 	"value.h"
 
-1581237596 source:c:\users\floyd\documents\c\func\compiler.c
+1582055094 source:c:\users\floyd\documents\c\func\compiler.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -46,20 +46,21 @@
 	"compiler.h"
 	"error.h"
 	"memory.h"
+	"number.h"
 	"scanner.h"
 	"object.h"
 	"vm.h"
 	"debug.h"
 
-1581182017 c:\users\floyd\documents\c\func\compiler.h
+1581967940 c:\users\floyd\documents\c\func\compiler.h
 	"object.h"
 
-1579692248 c:\users\floyd\documents\c\func\scanner.h
+1581765504 c:\users\floyd\documents\c\func\scanner.h
 
 1576430194 c:\users\floyd\documents\c\func\debug.h
 	"chunk.h"
 
-1581170767 source:c:\users\floyd\documents\c\func\debug.c
+1581518153 source:c:\users\floyd\documents\c\func\debug.c
 	<stdio.h>
 	"debug.h"
 	"memory.h"
@@ -77,7 +78,7 @@
 	"vm.h"
 	"debug.h"
 
-1580741334 source:c:\users\floyd\documents\c\func\object.c
+1581887852 source:c:\users\floyd\documents\c\func\object.c
 	<stdio.h>
 	<string.h>
 	"memory.h"
@@ -86,7 +87,7 @@
 	"value.h"
 	"vm.h"
 
-1579692248 source:c:\users\floyd\documents\c\func\scanner.c
+1581765263 source:c:\users\floyd\documents\c\func\scanner.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -102,7 +103,7 @@
 	"table.h"
 	"value.h"
 
-1580728910 source:c:\users\floyd\documents\c\func\value.c
+1581887831 source:c:\users\floyd\documents\c\func\value.c
 	<stdio.h>
 	<string.h>
 	"memory.h"
@@ -110,7 +111,7 @@
 	"object.h"
 	"vm.h"
 
-1581241078 source:c:\users\floyd\documents\c\func\vm.c
+1582287559 source:c:\users\floyd\documents\c\func\vm.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -126,9 +127,10 @@
 	"object.h"
 	"objarray.h"
 	"objstring.h"
+	"objnumber.h"
 	"memory.h"
 
-1579795994 source:c:\users\floyd\documents\c\func\main.c
+1581968152 source:c:\users\floyd\documents\c\func\main.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -145,7 +147,7 @@
 1578571303 c:\users\floyd\documents\c\func\error.h
 	<stdarg.h>
 
-1581168752 source:c:\users\floyd\documents\c\func\error.c
+1581969007 source:c:\users\floyd\documents\c\func\error.c
 	<string.h>
 	<stdio.h>
 	<stdlib.h>
@@ -173,28 +175,67 @@
 1580128070 c:\users\floyd\documents\c\func\string.h
 	"value.h"
 
-1580754325 source:c:\users\floyd\documents\c\func\objarray.c
+1582060648 source:c:\users\floyd\documents\c\func\objarray.c
 	<string.h>
 	"objarray.h"
 	"memory.h"
 	"object.h"
 	"vm.h"
 
-1580128239 c:\users\floyd\documents\c\func\objarray.h
+1581769269 c:\users\floyd\documents\c\func\objarray.h
 	"value.h"
 
-1580128192 c:\users\floyd\documents\c\func\objstring.h
+1581769339 c:\users\floyd\documents\c\func\objstring.h
 	"value.h"
 
-1580245411 source:c:\users\floyd\documents\c\func\objstring.c
+1582060401 source:c:\users\floyd\documents\c\func\objstring.c
 	<stdio.h>
 	<string.h>
 	"objstring.h"
 	"index.h"
+	"memory.h"
+	"number.h"
+	"utf8.h"
 	"vm.h"
 
-1580204319 source:c:\users\floyd\documents\c\func\index.c
+1581631614 source:c:\users\floyd\documents\c\func\index.c
 	"index.h"
 
 1580204319 c:\users\floyd\documents\c\func\index.h
+
+1582287986 source:c:\users\floyd\documents\c\func\number.c
+	"number.h"
+	<math.h>
+	<inttypes.h>
+	<stdint.h>
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
+1581667984 c:\users\floyd\documents\c\func\number.h
+
+1582287820 source:c:\users\floyd\documents\c\func\objnumber.c
+	<stdio.h>
+	<string.h>
+	<math.h>
+	"objnumber.h"
+	"memory.h"
+	"number.h"
+	"utf8.h"
+	"vm.h"
+
+1581769269 c:\users\floyd\documents\c\func\objnumber.h
+	"value.h"
+
+1581950291 c:\users\floyd\documents\c\func\utf8.h
+	<stdint.h>
+
+1581950643 source:c:\users\floyd\documents\c\func\utf8.c
+	<stdlib.h>
+	<stdio.h>
+	<string.h>
+	<stdarg.h>
+	<malloc.h>
+	<alloca.h>
+	"utf8.h"
 
