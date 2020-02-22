@@ -137,6 +137,7 @@ typedef struct {
 
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_INITIALIZER,
   TYPE_METHOD,
   TYPE_SCRIPT
 } FunctionType;
@@ -298,7 +299,15 @@ static int emitJump(VM* vm, uint8_t instruction) {
 }
 
 static void emitReturn(VM* vm) {
-  emitByte(vm, OP_NULL);
+  //if (current->type == TYPE_INITIALIZER) {
+  if (vm->compiler->type == TYPE_INITIALIZER) {
+    //emitBytes(OP_GET_LOCAL, 0);
+    emitByte(vm, OP_GET_LOCAL);
+    emitWord(vm, 0);
+    // Stack slot zero contains the instance
+  } else {
+    emitByte(vm, OP_NULL);
+  }
   emitByte(vm, OP_RETURN);
 }
 
@@ -1265,6 +1274,9 @@ static void method(VM* vm) {
   uint16_t constant = identifierConstant(vm, &vm->parser->previous);
 
   FunctionType type = TYPE_METHOD;
+  if (vm->parser->previous.length == 4 && memcmp(&vm->parser->previous.start, "init", 4) == 0) {
+    type = TYPE_INITIALIZER;
+  }
   function(vm, type);
   emitByte(vm, OP_METHOD);
   emitWord(vm, constant);
@@ -1497,8 +1509,12 @@ static void returnStatement(VM* vm) {
   }
 
   if (match(vm, TOKEN_SEMICOLON)) {
-    emitReturn(vm);
+    emitReturn(vm); // No return value specified
   } else {
+    //if (current->type == TYPE_INITIALIZER) {
+    if (vm->compiler->type == TYPE_INITIALIZER) {
+      error(vm, "Cannot return a value from an initializer.");
+    }
     expression(vm);
     consume(vm, TOKEN_SEMICOLON, "Expect ';' after return value.");
     emitByte(vm, OP_RETURN);
