@@ -137,6 +137,7 @@ typedef struct {
 
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_METHOD,
   TYPE_SCRIPT
 } FunctionType;
 
@@ -155,9 +156,15 @@ typedef struct Compiler {
 
 } Compiler;
 
+typedef struct ClassCompiler {
+  struct ClassCompiler* enclosing; // Lexical enclosure, not inheritance
+  Token name;
+} ClassCompiler;
 
+// Note: moved to within "vm", see vm.h
 // Parser parser;
 // Compiler* current = NULL;
+// ClassCompiler* currentClass = NULL;
 
 // https://github.com/munificent/craftinginterpreters/blob/master/note/answers/chapter23_jumping/2.md
 int innermostLoopStart = -1;
@@ -360,8 +367,14 @@ static void initCompiler(VM* vm, Compiler* compiler, FunctionType type) {
   Local* local = &vm->compiler->locals[vm->compiler->localCount++];
   local->depth = 0;
   local->isCaptured = false;
-  local->name.start = "";
-  local->name.length = 0;
+  if (type != TYPE_FUNCTION) {
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    local->name.start = "";
+    local->name.length = 0;
+  }
+
 #ifdef DEBUG_TRACE_COMPILER
 //  printf("compiler:initCompiler() compiler %p initialized\n", current);
   printf("compiler:initCompiler() compiler %p initialized\n", vm->compiler);
@@ -1030,6 +1043,17 @@ static void variable(VM* vm, bool canAssign) {
   namedVariable(vm, vm->parser->previous, canAssign);
 }
 
+
+static void this_(VM* vm, bool canAssign) {
+  if (vm->currentClass == NULL) {
+    error(vm, "Cannot use 'this' outside of a class.");
+    return;
+  }
+  variable(vm, false); // false = user can not assign to 'this'
+  // see initCompiler() for initialization
+}
+
+
 static void unary(VM* vm, bool canAssign) {
   (unused)canAssign;
   TokenType operatorType = vm->parser->previous.type;
@@ -1141,7 +1165,7 @@ ParseRule rules[] = {
   { NULL,     NULL,    PREC_NONE },       // TOKEN_RETURN
   { NULL,     NULL,    PREC_NONE },       // TOKEN_SUPER
   { NULL,     NULL,    PREC_NONE },       // TOKEN_SWITCH
-  { NULL,     NULL,    PREC_NONE },       // TOKEN_THIS
+  { this_,    NULL,    PREC_NONE },       // TOKEN_THIS
   { literal,  NULL,    PREC_NONE },       // TOKEN_TRUE
   { NULL,     NULL,    PREC_NONE },       // TOKEN_VAR
   { NULL,     NULL,    PREC_NONE },       // TOKEN_WHILE
@@ -1239,7 +1263,7 @@ static void method(VM* vm) {
   consume(vm, TOKEN_IDENTIFIER, "Expect method name.");
   uint16_t constant = identifierConstant(vm, &vm->parser->previous);
 
-  FunctionType type = TYPE_FUNCTION;
+  FunctionType type = TYPE_METHOD;
   function(vm, type);
   emitByte(vm, OP_METHOD);
   emitWord(vm, constant);
@@ -1257,6 +1281,14 @@ static void classDeclaration(VM* vm) {
   emitWord(vm, nameConstant);
   defineVariable(vm, nameConstant);
 
+  ClassCompiler classCompiler;
+  //classCompiler.name = parser.previous;
+  //classCompiler.enclosing = currentClass;
+  //currentClass = &classCompiler;
+  classCompiler.name = vm->parser->previous; // name is a Token
+  classCompiler.enclosing = vm->currentClass;
+  vm->currentClass = &classCompiler;
+
   namedVariable(vm, *className, false); // Put the class name on the stack
   consume(vm, TOKEN_LEFT_BRACE, "Expect '{' before class body.");
   while (!check(vm, TOKEN_RIGHT_BRACE) && !check(vm, TOKEN_EOF)) {
@@ -1266,6 +1298,8 @@ static void classDeclaration(VM* vm) {
   }
   consume(vm, TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   emitByte(vm, OP_POP); // We no longer need the class name
+  //currentClass = currentClass->enclosing;
+  vm->currentClass = vm->currentClass->enclosing; // Nor its compiler struct
 }
 
 static void funDeclaration(VM* vm) {

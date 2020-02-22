@@ -258,6 +258,7 @@ static bool callValue(VM* vm, Value callee, int argCount) {
     switch (OBJ_TYPE(callee)) {
       case OBJ_BOUND_METHOD: {
         ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
+        vm->stackTop[-argCount - 1] = bound->receiver; // Receiver will go in stack slot zero
         return call(vm, bound->method, argCount);
       }
       case OBJ_CLASS: {
@@ -611,6 +612,7 @@ VM* initVM() {
 
   vm->parser = NULL;
   vm->compiler = NULL;
+  vm->currentClass = NULL;
 
   defineNative(vm, "clock", clockNative);
   defineNative(vm, "sleep", sleepNative);

@@ -54,6 +54,7 @@ typedef struct FunVM {
 
   struct Parser* parser;
   struct Compiler* compiler; // current
+  struct ClassCompiler* currentClass;
 
   int grayCount; // GC graystack slots in use
   int grayCapacity; // GC graystack slot capacity
