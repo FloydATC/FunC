@@ -313,6 +313,21 @@ static bool callValue(VM* vm, Value callee, int argCount) {
   return false;
 }
 
+
+static bool bindMethod(VM* vm, ObjClass* klass, ObjString* name) {
+  Value method;
+  if (!tableGet(vm, &klass->methods, name, &method)) {
+    runtimeError(vm, "Undefined property '%s'.", name->chars);
+    return false;
+  }
+
+  ObjBoundMethod* bound = newBoundMethod(vm, peek(vm, 0), AS_CLOSURE(method));
+  pop(vm);
+  push(vm, OBJ_VAL(bound));
+  return true;
+}
+
+
 static ObjUpvalue* captureUpvalue(VM* vm, Value* local) {
   ObjUpvalue* prevUpvalue = NULL;
   ObjUpvalue* upvalue = vm->openUpvalues;
@@ -1028,14 +1043,19 @@ InterpretResult run(VM* vm) {
           runtimeError(vm, "Type %s has no properties.", getValueTypeString(value));
           return INTERPRET_RUNTIME_ERROR;
         }
+        // If we get this far, the receiver should be an object
+        // Fields take precedence so check those first
         ObjInstance* instance = AS_INSTANCE(peek(vm, 0));
         if (tableGet(vm, &instance->fields, name, &value)) {
           pop(vm); // Instance.
           push(vm, value);
           break;
         }
-        runtimeError(vm, "Undefined property '%s'.", name->chars);
-        return INTERPRET_RUNTIME_ERROR;
+        // Next, check if name refers to a method
+        if (!bindMethod(vm, instance->klass, name)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
       }
       case OP_SET_PROPERTY: {
         if (!IS_INSTANCE(peek(vm, 1))) {
