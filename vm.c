@@ -210,6 +210,7 @@ void freeVM(VM* vm) {
   //printf("vm.freeVM(%p) freeing strings\n", (void*)vm);
   freeTable(vm, &vm->strings);
   //printf("vm.freeVM(%p) freeing objects\n", (void*)vm);
+  vm->initString = NULL; // Gets freed by freeObjects
   freeObjects(vm);
   //printf("vm.freeVM(%p) freeing struct\n", (void*)vm);
   free(vm);
@@ -264,6 +265,13 @@ static bool callValue(VM* vm, Value callee, int argCount) {
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
         vm->stackTop[-argCount - 1] = OBJ_VAL(newInstance(vm, klass));
+        Value initializer;
+        if (tableGet(vm, &klass->methods, vm->initString, &initializer)) {
+          return call(vm, AS_CLOSURE(initializer), argCount);
+        } else if (argCount != 0) {
+          runtimeError(vm, "Expected 0 arguments, got %d.", argCount);
+          return false;
+        }
         return true;
       }
       case OBJ_CLOSURE: {
@@ -613,6 +621,8 @@ VM* initVM() {
   vm->parser = NULL;
   vm->compiler = NULL;
   vm->currentClass = NULL;
+
+  vm->initString = copyString(vm, "init", 4);
 
   defineNative(vm, "clock", clockNative);
   defineNative(vm, "sleep", sleepNative);

@@ -1045,6 +1045,7 @@ static void variable(VM* vm, bool canAssign) {
 
 
 static void this_(VM* vm, bool canAssign) {
+  (unused)canAssign;
   if (vm->currentClass == NULL) {
     error(vm, "Cannot use 'this' outside of a class.");
     return;

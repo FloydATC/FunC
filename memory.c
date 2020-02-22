@@ -320,6 +320,10 @@ static void markRoots(VM* vm) {
   printf("memory:markRoots(vm=%p) scan compiler\n", vm);
 #endif
   markCompilerRoots(vm);
+#ifdef DEBUG_LOG_GC_EXTREME
+  printf("memory:markRoots(vm=%p) include the initString\n", vm);
+#endif
+  markObject(vm, (Obj*)vm->initString);
 }
 
 static void traceReferences(void* vm) {

@@ -38,9 +38,8 @@ typedef struct FunVM {
   Value* stackTop;
   Table globals; // Global variables
   Table strings; // Internalized, unique strings
+  ObjString* initString; // Literally "init", used for calling object initializers
   ObjUpvalue* openUpvalues; // Umm. Yea. Those.
-
-
 
   size_t bytesAllocated;
   size_t nextGC;
