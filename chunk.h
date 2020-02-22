@@ -56,6 +56,7 @@ typedef enum {
   OP_QJMP_IF_FALSE, // pop hi, pop lo, PEEK a, IF a==falsey THEN ip += (hi<<8)|lo
   OP_LOOP,          // pop hi, pop lo, ip -= (hi<<8)|lo
   OP_CALL,          // call a function. (sounds easy. isn't.)
+  OP_INVOKE,        // look up a method and call it (optimization from ch.28.5)
   OP_CLOSURE,       // a closure thing. (tbd if/when I get it.)
   OP_CLOSE_UPVALUE, // another, even stranger closure thing
   OP_RETURN,        //

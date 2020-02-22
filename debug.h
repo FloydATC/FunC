@@ -12,6 +12,7 @@ int disassembleInstruction(Chunk* chunk, int offset);
 // If declared static, the .c refuses to compile over "implicit declaration" something.
 int simpleInstruction(const char* name, int offset);
 int constantInstruction(const char* name, Chunk* chunk, int offset);
+int invokeInstruction(const char* name, Chunk* chunk, int offset);
 int byteInstruction(const char* name, Chunk* chunk, int offset);
 int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset);
 #endif

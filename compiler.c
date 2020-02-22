@@ -662,6 +662,16 @@ static void dot(VM* vm, bool canAssign) {
 //    emitBytes(vm, OP_SET_PROPERTY, name);
     emitByte(vm, OP_SET_PROPERTY);
     emitWord(vm, name);
+  } else if (match(vm, TOKEN_LEFT_PAREN)) {
+    // Optimized invocation of bound method calls - chapter 28.5
+    // .method is followed by () = call that method instead of loading it on the stack
+    // This is the most common way to use a method, but not the ONLY way
+    // BUT! I think this will break my hard-coded built-in methods.
+    uint8_t argCount = argumentList(vm);
+    //emitBytes(OP_INVOKE, name);
+    emitByte(vm, OP_INVOKE);
+    emitWord(vm, name);
+    emitByte(vm, argCount);
   } else {
 //    emitBytes(vm, OP_GET_PROPERTY, name);
     emitByte(vm, OP_GET_PROPERTY);

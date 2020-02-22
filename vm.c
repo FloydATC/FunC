@@ -324,7 +324,34 @@ static bool callValue(VM* vm, Value callee, int argCount) {
 
   runtimeError(vm, "Can only call functions and classes.");
   return false;
+} // callValue
+
+
+static bool invokeFromClass(VM* vm, ObjClass* klass, ObjString* name, int argCount) {
+  Value method;
+  if (!tableGet(vm, &klass->methods, name, &method)) {
+    runtimeError(vm, "Undefined property '%s'.", name->chars);
+    return false;
+  }
+
+  return call(vm, AS_CLOSURE(method), argCount);
 }
+
+
+static bool invoke(VM* vm, ObjString* name, int argCount) {
+  Value receiver = peek(vm, argCount); // Stack slot zero
+
+  // This is probably where we'll have to check for our built-in methods
+
+  if (!IS_INSTANCE(receiver)) {
+    runtimeError(vm, "Only instances have methods. #invoke");
+    return false;
+  }
+
+  ObjInstance* instance = AS_INSTANCE(receiver);
+  return invokeFromClass(vm, instance->klass, name, argCount);
+}
+
 
 
 static bool bindMethod(VM* vm, ObjClass* klass, ObjString* name) {
@@ -1136,6 +1163,16 @@ InterpretResult run(VM* vm) {
         int argCount = READ_BYTE();
         if (!callValue(vm, peek(vm, argCount), argCount)) {
           printf("vm:callValue() returned false\n");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm->frames[vm->frameCount - 1];
+        break;
+      }
+      case OP_INVOKE: {
+        // = OP_GET_PROPERTY + OP_CALL combined
+        ObjString* method = READ_STRING();
+        int argCount = READ_BYTE();
+        if (!invoke(vm, method, argCount)) {
           return INTERPRET_RUNTIME_ERROR;
         }
         frame = &vm->frames[vm->frameCount - 1];
