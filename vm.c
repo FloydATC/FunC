@@ -349,6 +349,15 @@ static bool invoke(VM* vm, ObjString* name, int argCount) {
   }
 
   ObjInstance* instance = AS_INSTANCE(receiver);
+
+  // Fields have precedence over methods, and a field may contain a plain function
+  Value value;
+  if (tableGet(vm, &instance->fields, name, &value)) {
+    vm->stackTop[-argCount - 1] = value;
+    return callValue(vm, value, argCount);
+  }
+
+  // Invoke as method
   return invokeFromClass(vm, instance->klass, name, argCount);
 }
 
