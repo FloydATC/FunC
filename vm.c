@@ -346,6 +346,13 @@ static void closeUpvalues(VM* vm, Value* last) {
   }
 }
 
+static void defineMethod(VM* vm, ObjString* name) {
+  Value method = peek(vm, 0);
+  ObjClass* klass = AS_CLASS(peek(vm, 1));
+  tableSet(vm, &klass->methods, name, method);
+  pop(vm);
+}
+
 static bool isFalsey(Value value) {
   return IS_NULL(value) || // NULL is falsey
         (IS_BOOL(value) && !AS_BOOL(value)) || // FALSE is falsey
@@ -1137,6 +1144,9 @@ InterpretResult run(VM* vm) {
       }
       case OP_CLASS:
         push(vm, OBJ_VAL(newClass(vm, READ_STRING())));
+        break;
+      case OP_METHOD:
+        defineMethod(vm, READ_STRING());
         break;
       default: {
         runtimeError(vm, "Internal error: unhandled OP_CODE %d.", instruction);

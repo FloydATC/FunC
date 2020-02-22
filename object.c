@@ -48,6 +48,13 @@ static Obj* allocateObject(void* vm, size_t size, ObjType type) {
   return object;
 }
 
+ObjBoundMethod* newBoundMethod(void* vm, Value receiver, ObjClosure* method) {
+  ObjBoundMethod* bound = ALLOCATE_OBJ(vm, ObjBoundMethod, OBJ_BOUND_METHOD);
+  bound->receiver = receiver;
+  bound->method = method;
+  return bound;
+}
+
 
 ObjClass* newClass(void* vm, ObjString* name) {
 #ifdef DEBUG_TRACE_OBJECTS
@@ -55,6 +62,7 @@ ObjClass* newClass(void* vm, ObjString* name) {
 #endif
   ObjClass* klass = ALLOCATE_OBJ(vm, ObjClass, OBJ_CLASS);
   klass->name = name;
+  initTable(&klass->methods);
   return klass;
 }
 
@@ -250,6 +258,9 @@ static void printFunction(ObjFunction* function) {
 void printObject(Value value) {
   //printf("object:printObject() type=%d\n", OBJ_TYPE(value));
   switch (OBJ_TYPE(value)) {
+    case OBJ_BOUND_METHOD:
+      printFunction(AS_BOUND_METHOD(value)->method->function);
+      break;
     case OBJ_CLASS:
       // TODO: some sort of toString() call?
       printf("<class:%s>", AS_CLASS(value)->name->chars);
@@ -290,6 +301,7 @@ char* getObjectTypeString(Value value) {
     case OBJ_ARRAY: return "array";
     case OBJ_NATIVE:
     case OBJ_NATIVEMETHOD:
+    case OBJ_BOUND_METHOD:
     case OBJ_CLOSURE: return "function";
     case OBJ_STRING: return "string";
     default: return "internal"; // Not actually user visible
@@ -306,6 +318,7 @@ Value getObjectType(void* vm, Value value) {
     case OBJ_ARRAY: return OBJ_VAL(copyString(vm, "array", 5));
     case OBJ_NATIVE:
     case OBJ_NATIVEMETHOD:
+    case OBJ_BOUND_METHOD:
     case OBJ_CLOSURE: return OBJ_VAL(copyString(vm, "function", 8));
     case OBJ_STRING: return OBJ_VAL(copyString(vm, "string", 6));
     default: return OBJ_VAL(copyString(vm, "internal", 8)); // Not actually user visible

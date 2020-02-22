@@ -1227,8 +1227,7 @@ static void function(VM* vm, FunctionType type) {
   //printf("EXPERIMENTAL FIX FOR GC BUG: pop()\n");
   pop(vm); // EXPERIMENTAL FIX FOR GC BUG
 
-  emitByte(vm, constant>>8);
-  emitByte(vm, constant & 0xff);
+  emitWord(vm, constant);
 
   for (int i = 0; i < function->upvalueCount; i++) {
     emitByte(vm, compiler.upvalues[i].isLocal ? 1 : 0);
@@ -1236,9 +1235,20 @@ static void function(VM* vm, FunctionType type) {
   }
 }
 
+static void method(VM* vm) {
+  consume(vm, TOKEN_IDENTIFIER, "Expect method name.");
+  uint16_t constant = identifierConstant(vm, &vm->parser->previous);
+
+  FunctionType type = TYPE_FUNCTION;
+  function(vm, type);
+  emitByte(vm, OP_METHOD);
+  emitWord(vm, constant);
+}
+
 static void classDeclaration(VM* vm) {
   consume(vm, TOKEN_IDENTIFIER, "Expect class name.");
 //  uint8_t nameConstant = identifierConstant(vm, &vm->parser->previous);
+  Token* className = &vm->parser->previous; // Note the name
   uint16_t nameConstant = identifierConstant(vm, &vm->parser->previous);
   declareVariable(vm);
 
@@ -1247,8 +1257,15 @@ static void classDeclaration(VM* vm) {
   emitWord(vm, nameConstant);
   defineVariable(vm, nameConstant);
 
+  namedVariable(vm, *className, false); // Put the class name on the stack
   consume(vm, TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  while (!check(vm, TOKEN_RIGHT_BRACE) && !check(vm, TOKEN_EOF)) {
+    // We don't have field declarations so anything here must be a method
+    // Hmm.
+    method(vm);
+  }
   consume(vm, TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+  emitByte(vm, OP_POP); // We no longer need the class name
 }
 
 static void funDeclaration(VM* vm) {

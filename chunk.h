@@ -60,6 +60,7 @@ typedef enum {
   OP_CLOSE_UPVALUE, // another, even stranger closure thing
   OP_RETURN,        //
   OP_CLASS,         //
+  OP_METHOD,        //
 } OpCode;
 
 typedef struct {

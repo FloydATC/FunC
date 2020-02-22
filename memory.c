@@ -161,9 +161,16 @@ static void blackenObject(void* vm, Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_BOUND_METHOD: {
+      ObjBoundMethod* bound = (ObjBoundMethod*)object;
+      markValue(vm, bound->receiver);
+      markObject(vm, (Obj*)bound->method); // Not really needed, but best practice
+      break;
+    }
     case OBJ_CLASS: {
       ObjClass* klass = (ObjClass*)object;
       markObject(vm, (Obj*)klass->name);
+      markTable(vm, &klass->methods);
       break;
     }
     case OBJ_CLOSURE: {
@@ -217,7 +224,14 @@ static void freeObject(void* vm, Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_BOUND_METHOD: {
+      // A bound method does not own any of its contents, it only references them
+      FREE(vm, ObjBoundMethod, object);
+      break;
+    }
     case OBJ_CLASS: {
+      ObjClass* klass = (ObjClass*)object;
+      freeTable(vm, &klass->methods);
       FREE(vm, ObjClass, object);
       break;
     }
