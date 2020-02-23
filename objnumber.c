@@ -56,6 +56,18 @@ static bool number_char(void* vm, Value receiver, Value* result) {
 }
 
 
+// Native C attribute: NUMBER.str -- shorthand for NUMBER.base(10)
+static bool number_str(void* vm, Value receiver, Value* result) {
+
+  char* buf;
+  int length = double_to_str_dec(AS_NUMBER(receiver), &buf);
+
+  *result = OBJ_VAL(takeString(vm, buf, length));
+  return true;
+
+}
+
+
 // ==== methods ====
 
 // Native C method: NUMBER.base()
@@ -140,6 +152,7 @@ static bool number_hypot(void* vm, Value receiver, int argCount, Value* args, Va
 bool getNumberProperty(void* vm, Value receiver, ObjString* name, Value* property) {
 
   if (strcmp(name->chars, "char")==0) return number_char(vm, receiver, property);
+  if (strcmp(name->chars, "str")==0) return number_str(vm, receiver, property);
 
   // These properties all call a native C function, take no arguments and return a number
   PROPERTY("sin",   sin);
