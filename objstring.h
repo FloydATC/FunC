@@ -24,7 +24,9 @@
 */
 
 
-bool stringProperty(void* vm, Value receiver, ObjString* name);
+bool getStringProperty(void* vm, Value receiver, ObjString* name, Value* property);
+bool pushStringProperty(void* vm, Value receiver, ObjString* name);
+//bool stringProperty(void* vm, Value receiver, ObjString* name);
 
 
 #endif

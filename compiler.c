@@ -662,6 +662,7 @@ static void dot(VM* vm, bool canAssign) {
 //    emitBytes(vm, OP_SET_PROPERTY, name);
     emitByte(vm, OP_SET_PROPERTY);
     emitWord(vm, name);
+#ifdef OPTIMIZE_METHOD_CALLS
   } else if (match(vm, TOKEN_LEFT_PAREN)) {
     // Optimized invocation of bound method calls - chapter 28.5
     // .method is followed by () = call that method instead of loading it on the stack
@@ -672,6 +673,7 @@ static void dot(VM* vm, bool canAssign) {
     emitByte(vm, OP_INVOKE);
     emitWord(vm, name);
     emitByte(vm, argCount);
+  #endif
   } else {
 //    emitBytes(vm, OP_GET_PROPERTY, name);
     emitByte(vm, OP_GET_PROPERTY);

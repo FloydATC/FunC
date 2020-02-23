@@ -313,22 +313,21 @@ static bool string_rtrim(void* vm, Value receiver, int argCount, Value* args, Va
   return true;
 }
 
+
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
-    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
-    pop(vm); \
-    push(vm, result); \
+    *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
     return true; \
   }
 
-bool stringProperty(void* vm, Value receiver, ObjString* name) {
+
+bool getStringProperty(void* vm, Value receiver, ObjString* name, Value* property) {
   ObjString* string = AS_STRING(receiver);
-  Value result;
+
+  // Properties
   if (strcmp(name->chars, "bytes")==0) {
     // Return the string length in number of bytes (storage size)
-    result = NUMBER_VAL(string->length);
-    pop(vm);
-    push(vm, result);
+    *property = NUMBER_VAL(string->length);
     return true;
   }
   if (strcmp(name->chars, "chars")==0) {
@@ -337,9 +336,7 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     for (int i=0; i<string->length; i++) {
       if (isutf(string->chars[i])) count++;
     }
-    result = NUMBER_VAL(count);
-    pop(vm);
-    push(vm, result);
+    *property = NUMBER_VAL(count);
     return true;
   }
   if (strcmp(name->chars, "code")==0) {
@@ -349,8 +346,7 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
     //printf("objstring:stringProperty() get codepoint of '%s' (%d bytes)\n", string->chars, string->length);
     u8_toucs(codepoint, bufsiz, string->chars, string->length);
     //printf("objstring:stringProperty() result=%d\n", codepoint[0]);
-    pop(vm);
-    push(vm, NUMBER_VAL((double) codepoint[0]));
+    *property = NUMBER_VAL((double) codepoint[0]);
     return true;
   }
 
@@ -366,6 +362,18 @@ bool stringProperty(void* vm, Value receiver, ObjString* name) {
   runtimeError(vm, "String has no '%s'.", name->chars);
   return false;
 }
+
+
+// Get a string property, pop receiver and push the property
+bool pushStringProperty(void* vm, Value receiver, ObjString* name) {
+  Value method;
+  if (!getStringProperty(vm, receiver, name, &method)) return false;
+  pop(vm); // receiver
+  push(vm, method);
+  return true;
+}
+
+
 
 #undef METHOD
 

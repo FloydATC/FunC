@@ -10,12 +10,13 @@
 
 void printObjectType(ObjType type) {
   switch (type) {
+    case OBJ_BOUND_METHOD: printf("OBJ_BOUND_METHOD"); break;
     case OBJ_CLASS: printf("OBJ_CLASS"); break;
     case OBJ_CLOSURE: printf("OBJ_CLOSURE"); break;
     case OBJ_FUNCTION: printf("OBJ_FUNCTION"); break;
     case OBJ_INSTANCE: printf("OBJ_INSTANCE"); break;
     case OBJ_NATIVE: printf("OBJ_NATIVE"); break;
-    case OBJ_NATIVEMETHOD: printf("OBJ_NATIVEMETHOD"); break;
+    case OBJ_NATIVE_METHOD: printf("OBJ_NATIVE_METHOD"); break;
     case OBJ_STRING: printf("OBJ_STRING"); break;
     case OBJ_ARRAY: printf("OBJ_ARRAY"); break;
     case OBJ_UPVALUE: printf("OBJ_UPVALUE"); break;
@@ -115,22 +116,24 @@ ObjInstance* newInstance(void* vm, ObjClass* klass) {
 }
 
 
-ObjNative* newNative(void* vm, NativeFn function) {
+ObjNative* newNative(void* vm, ObjString* name, NativeFn function) {
 #ifdef DEBUG_TRACE_OBJECTS
   printf("object:newNative()\n");
 #endif
   ObjNative* native = ALLOCATE_OBJ(vm, ObjNative, OBJ_NATIVE);
+  native->name = name;
   native->function = function;
   return native;
 }
 
 
-ObjNativeMethod* newNativeMethod(void* vm, Value receiver, NativeMFn function) {
+ObjNativeMethod* newNativeMethod(void* vm, Value receiver, ObjString* name, NativeMFn function) {
 #ifdef DEBUG_TRACE_OBJECTS
   printf("object:newNativeMethod()\n");
 #endif
-  ObjNativeMethod* native = ALLOCATE_OBJ(vm, ObjNativeMethod, OBJ_NATIVEMETHOD);
+  ObjNativeMethod* native = ALLOCATE_OBJ(vm, ObjNativeMethod, OBJ_NATIVE_METHOD);
   native->receiver = receiver;
+  native->name = name;
   native->function = function;
   return native;
 }
@@ -251,7 +254,7 @@ static void printFunction(ObjFunction* function) {
     printf("<script>");
     return;
   }
-  printf("<fun:%s>", function->name->chars);
+  printf("<%s()>", function->name->chars);
 }
 
 
@@ -263,7 +266,7 @@ void printObject(Value value) {
       break;
     case OBJ_CLASS:
       // TODO: some sort of toString() call?
-      printf("<class:%s>", AS_CLASS(value)->name->chars);
+      printf("<%s().>", AS_CLASS(value)->name->chars);
       break;
     case OBJ_CLOSURE:
       printFunction(AS_CLOSURE(value)->function);
@@ -273,13 +276,13 @@ void printObject(Value value) {
       break;
     case OBJ_INSTANCE:
       // TODO: some sort of toString() call?
-      printf("<instance:%s>", AS_INSTANCE(value)->klass->name->chars);
+      printf("<%s.>", AS_INSTANCE(value)->klass->name->chars);
       break;
     case OBJ_NATIVE:
-      printf("<fun>");
+      printf("<%s()>", (AS_NATIVE(value)->name->chars));
       break;
-    case OBJ_NATIVEMETHOD:
-      printf("<fun>");
+    case OBJ_NATIVE_METHOD:
+      printf("<.%s()>", (AS_NATIVE_METHOD(value)->name->chars));
       break;
     case OBJ_STRING:
       printf("%s", AS_CSTRING(value));
@@ -300,7 +303,7 @@ char* getObjectTypeString(Value value) {
     case OBJ_INSTANCE: return "instance";
     case OBJ_ARRAY: return "array";
     case OBJ_NATIVE:
-    case OBJ_NATIVEMETHOD:
+    case OBJ_NATIVE_METHOD:
     case OBJ_BOUND_METHOD:
     case OBJ_CLOSURE: return "function";
     case OBJ_STRING: return "string";
@@ -317,7 +320,7 @@ Value getObjectType(void* vm, Value value) {
     case OBJ_INSTANCE: return OBJ_VAL(copyString(vm, "instance", 8));
     case OBJ_ARRAY: return OBJ_VAL(copyString(vm, "array", 5));
     case OBJ_NATIVE:
-    case OBJ_NATIVEMETHOD:
+    case OBJ_NATIVE_METHOD:
     case OBJ_BOUND_METHOD:
     case OBJ_CLOSURE: return OBJ_VAL(copyString(vm, "function", 8));
     case OBJ_STRING: return OBJ_VAL(copyString(vm, "string", 6));

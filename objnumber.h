@@ -21,7 +21,9 @@
 */
 
 
-bool numberProperty(void* vm, Value receiver, ObjString* name);
+bool getNumberProperty(void* vm, Value receiver, ObjString* name, Value* property);
+bool pushNumberProperty(void* vm, Value receiver, ObjString* name);
+//bool numberProperty(void* vm, Value receiver, ObjString* name);
 
 
 #endif

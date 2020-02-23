@@ -14,7 +14,7 @@
 #define IS_FUNCTION(value)      isObjType(value, OBJ_FUNCTION)
 #define IS_INSTANCE(value)      isObjType(value, OBJ_INSTANCE)
 #define IS_NATIVE(value)        isObjType(value, OBJ_NATIVE)
-#define IS_NATIVEMETHOD(value)  isObjType(value, OBJ_NATIVEMETHOD)
+#define IS_NATIVE_METHOD(value)  isObjType(value, OBJ_NATIVE_METHOD)
 #define IS_STRING(value)        isObjType(value, OBJ_STRING)
 #define IS_ARRAY(value)         isObjType(value, OBJ_ARRAY)
 
@@ -23,8 +23,8 @@
 #define AS_CLOSURE(value)       ((ObjClosure*)AS_OBJ(value))
 #define AS_FUNCTION(value)      ((ObjFunction*)AS_OBJ(value))
 #define AS_INSTANCE(value)      ((ObjInstance*)AS_OBJ(value))
-#define AS_NATIVE(value)        (((ObjNative*)AS_OBJ(value))->function)
-#define AS_NATIVEMETHOD(value)  ((ObjNativeMethod*)AS_OBJ(value))
+#define AS_NATIVE(value)        (((ObjNative*)AS_OBJ(value)))
+#define AS_NATIVE_METHOD(value) ((ObjNativeMethod*)AS_OBJ(value))
 #define AS_STRING(value)        ((ObjString*)AS_OBJ(value))
 #define AS_ARRAY(value)         ((ObjArray*)AS_OBJ(value))
 #define AS_CSTRING(value)       (((ObjString*)AS_OBJ(value))->chars)
@@ -38,7 +38,7 @@ typedef enum {
   OBJ_FUNCTION,
   OBJ_INSTANCE,
   OBJ_NATIVE,
-  OBJ_NATIVEMETHOD,
+  OBJ_NATIVE_METHOD,
   OBJ_STRING,
   OBJ_ARRAY,
   OBJ_UPVALUE,
@@ -65,12 +65,14 @@ typedef void (*ErrorCb)(const char* format,...);
 typedef struct {
   Obj obj;
   NativeFn function;
+  ObjString* name;
 } ObjNative;
 
 typedef struct {
   Obj obj;
   Value receiver;
   NativeMFn function;
+  ObjString* name;
 } ObjNativeMethod;
 
 struct sObjString {
@@ -124,8 +126,8 @@ ObjClass* newClass(void* vm, ObjString* name);
 ObjClosure* newClosure(void* vm, ObjFunction* function);
 ObjFunction* newFunction(void* vm);
 ObjInstance* newInstance(void* vm, ObjClass* klass);
-ObjNative* newNative(void* vm, NativeFn function);
-ObjNativeMethod* newNativeMethod(void* vm, Value receiver, NativeMFn function);
+ObjNative* newNative(void* vm, ObjString* name, NativeFn function);
+ObjNativeMethod* newNativeMethod(void* vm, Value receiver, ObjString* name, NativeMFn function);
 ObjArray* newArray(void* vm);
 void loadArray(void* vm, ObjArray* array, Value* values, int length);
 ObjString* takeString(void* vm, char* chars, int length);

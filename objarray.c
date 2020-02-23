@@ -169,8 +169,8 @@ static bool array_fill(void* vm, Value receiver, int argCount, Value* args, Valu
   return true;
 }
 
-// Native C method: ARRAY.size()
-static bool array_size(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+// Native C method: ARRAY.resize()
+static bool array_resize(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   if (argCount != 1) {
     runtimeError(vm, "Method takes 1 argument.");
     return false;
@@ -279,21 +279,18 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
 
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
-    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
-    pop(vm); \
-    push(vm, result); \
+    *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
     return true; \
   }
 
+
 // Hard-coded properties of ObjArray type
 // TODO: Replace the multiple calls to strncpy() with something more efficient
-bool arrayProperty(void* vm, Value receiver, ObjString* name) {
+bool getArrayProperty(void* vm, Value receiver, ObjString* name, Value* property) {
   ObjArray* array = AS_ARRAY(receiver);
-  Value result;
+
   if (strcmp(name->chars, "length")==0) {
-    result = NUMBER_VAL(array->length);
-    pop(vm);
-    push(vm, result);
+    *property = NUMBER_VAL(array->length);
     return true;
   }
 
@@ -302,13 +299,25 @@ bool arrayProperty(void* vm, Value receiver, ObjString* name) {
   METHOD("pop",     array_pop);
   METHOD("push",    array_push);
   METHOD("fill",    array_fill);
-  METHOD("size",    array_size);
+  METHOD("resize",  array_resize);
   METHOD("flat",    array_flat);
   METHOD("join",    array_join);
 
   runtimeError(vm, "Array has no '%s'.", name->chars);
   return false;
 }
+
+
+// Get an array property, pop receiver and push the property
+bool pushArrayProperty(void* vm, Value receiver, ObjString* name) {
+  Value method;
+  if (!getArrayProperty(vm, receiver, name, &method)) return false;
+  pop(vm); // receiver
+  push(vm, method);
+  return true;
+}
+
+
 
 #undef METHOD
 

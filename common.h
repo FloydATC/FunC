@@ -16,7 +16,7 @@ typedef void unused; // Silence warnings about unused variables with "(unused) v
 //#define DEBUG_TRACE_VALUES
 //#define DEBUG_TRACE_OBJECTS
 //#define DEBUG_TRACE_TABLES
-#define DEBUG_TRACE_EXECUTION
+//#define DEBUG_TRACE_EXECUTION
 //#define DEBUG_TRACE_MEMORY
 //#define DEBUG_TRACE_MEMORY_VERBOSE
 //#define DEBUG_TRACE_MEMORY_HEXDUMP
@@ -31,6 +31,9 @@ typedef void unused; // Silence warnings about unused variables with "(unused) v
 #define MAX_BREAKS_PER_SCOPE 256
 //#define MAX_SWITCH_CASES 256
 
+
+// For debugging, optionally disable OP_INVOKE
+#define OPTIMIZE_METHOD_CALLS
 
 
 

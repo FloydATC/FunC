@@ -197,8 +197,9 @@ void set_error_callback(VM* vm, ErrorCb ptr) {
 
 
 void defineNative(VM* vm, const char* name, NativeFn function) {
-  push(vm, OBJ_VAL(copyString(vm, name, (int)strlen(name))));
-  push(vm, OBJ_VAL(newNative(vm, function)));
+  ObjString* name_obj = copyString(vm, name, (int)strlen(name));
+  push(vm, OBJ_VAL(name_obj));
+  push(vm, OBJ_VAL(newNative(vm, name_obj, function)));
   tableSet(vm, &vm->globals, AS_STRING(vm->stack[0]), vm->stack[1]);
   pop(vm);
   pop(vm);
@@ -278,7 +279,7 @@ static bool callValue(VM* vm, Value callee, int argCount) {
         return call(vm, AS_CLOSURE(callee), argCount);
       }
       case OBJ_NATIVE: {
-        NativeFn native = AS_NATIVE(callee);
+        NativeFn native = AS_NATIVE(callee)->function;
         //printf("vm:callValue() will call %p with argCount=%d, args=%p\n", native, argCount,(vm->stackTop - argCount));
         for (int i=0; i<argCount; i++) {
           //printf("vm:callValue() checking arg %d\n", i);
@@ -300,20 +301,20 @@ static bool callValue(VM* vm, Value callee, int argCount) {
         }
         return true;
       }
-      case OBJ_NATIVEMETHOD: {
-        ObjNativeMethod* method = AS_NATIVEMETHOD(callee);
-        //printf("vm:callValue() will call %p with argCount=%d, args=%p\n", native, argCount,(vm->stackTop - argCount));
+      case OBJ_NATIVE_METHOD: {
+        ObjNativeMethod* method = AS_NATIVE_METHOD(callee);
+        //printf("vm:callValue() will call %p with argCount=%d, args=%p\n", method, argCount,(vm->stackTop - argCount));
         Value result;
         //printf("vm:callValue() args ok, calling\n");
         bool success = method->function(vm, method->receiver, argCount, vm->stackTop - argCount, &result);
         //printf("vm:callValue() returned from native function\n");
-        vm->stackTop -= argCount + 1; // Discard arguments from stack
-        //printf("vm:callValue() pushing result to stack\n");
-        push(vm, result);
         if (!success) {
           runtimeError(vm, "Call failed, check arguments.");
           return false;
         }
+        vm->stackTop -= argCount + 1; // Discard arguments from stack
+        //printf("vm:callValue() pushing result to stack\n");
+        push(vm, result);
         return true;
       }
       default:
@@ -327,10 +328,40 @@ static bool callValue(VM* vm, Value callee, int argCount) {
 } // callValue
 
 
+static bool invokeFromArray(VM* vm, Value receiver, ObjString* name, int argCount) {
+  Value method;
+  if (!getArrayProperty(vm, receiver, name, &method)) {
+    runtimeError(vm, "(Array) has no '%s'.", name->chars);
+    return false;
+  }
+  return callValue(vm, method, argCount);
+}
+
+
+static bool invokeFromNumber(VM* vm, Value receiver, ObjString* name, int argCount) {
+  Value method;
+  if (!getNumberProperty(vm, receiver, name, &method)) {
+    runtimeError(vm, "(Number) has no '%s'.", name->chars);
+    return false;
+  }
+  return callValue(vm, method, argCount);
+}
+
+
+static bool invokeFromString(VM* vm, Value receiver, ObjString* name, int argCount) {
+  Value method;
+  if (!getStringProperty(vm, receiver, name, &method)) {
+    runtimeError(vm, "(String) has no '%s'.", name->chars);
+    return false;
+  }
+  return callValue(vm, method, argCount);
+}
+
+
 static bool invokeFromClass(VM* vm, ObjClass* klass, ObjString* name, int argCount) {
   Value method;
   if (!tableGet(vm, &klass->methods, name, &method)) {
-    runtimeError(vm, "Undefined property '%s'.", name->chars);
+    runtimeError(vm, "%s has no '%s'.", &klass->name->chars, name->chars);
     return false;
   }
 
@@ -340,11 +371,18 @@ static bool invokeFromClass(VM* vm, ObjClass* klass, ObjString* name, int argCou
 
 static bool invoke(VM* vm, ObjString* name, int argCount) {
   Value receiver = peek(vm, argCount); // Stack slot zero
+  //printf("vm:invoke() name=%s receiver=", name->chars);
+  //printValue(receiver);
+  //printf(" argCount=%d\n", argCount);
 
-  // This is probably where we'll have to check for our built-in methods
+  // Check built-in properties
+  if (IS_ARRAY(receiver)) return invokeFromArray(vm, receiver, name, argCount);
+  if (IS_NUMBER(receiver)) return invokeFromNumber(vm, receiver, name, argCount);
+  if (IS_STRING(receiver)) return invokeFromString(vm, receiver, name, argCount);
 
   if (!IS_INSTANCE(receiver)) {
-    runtimeError(vm, "Only instances have methods. #invoke");
+    //runtimeError(vm, "Only instances have methods. #invoke");
+    runtimeError(vm, "Type %s has no properties.", getValueTypeString(receiver));
     return false;
   }
 
@@ -366,7 +404,7 @@ static bool invoke(VM* vm, ObjString* name, int argCount) {
 static bool bindMethod(VM* vm, ObjClass* klass, ObjString* name) {
   Value method;
   if (!tableGet(vm, &klass->methods, name, &method)) {
-    runtimeError(vm, "Undefined property '%s'.", name->chars);
+    runtimeError(vm, "%s has no '%s'.", &klass->name->chars, name->chars);
     return false;
   }
 
@@ -626,7 +664,6 @@ static void concatenateArrays(VM* vm) {
   push(vm, OBJ_VAL(result));
   //printf("vm:concatenateArrays() end\n");
 }
-
 
 
 
@@ -1073,24 +1110,19 @@ InterpretResult run(VM* vm) {
         ObjString* name = READ_STRING();
         Value value = peek(vm, 0);
         Value result;
+
         if (strncmp(name->chars, "type", name->length)==0) {
           result = getValueType(vm, value);
           pop(vm);
           push(vm, result);
           return true;
         }
-        if (IS_NUMBER(peek(vm, 0))) {
-          if (numberProperty(vm, value, name) == false) { return INTERPRET_RUNTIME_ERROR; }
-          break;
-        }
-        if (IS_STRING(peek(vm, 0))) {
-          if (stringProperty(vm, value, name) == false) { return INTERPRET_RUNTIME_ERROR; }
-          break;
-        }
-        if (IS_ARRAY(peek(vm, 0)))  {
-          if (arrayProperty(vm, value, name)  == false) { return INTERPRET_RUNTIME_ERROR; }
-          break;
-        }
+
+        // Check built-in properties -- OP_INVOKE must do the same
+        if (IS_ARRAY(peek(vm, 0))) return pushArrayProperty(vm, value, name);
+        if (IS_NUMBER(peek(vm, 0))) return pushNumberProperty(vm, value, name);
+        if (IS_STRING(peek(vm, 0))) return pushStringProperty(vm, value, name);
+
         if (!IS_INSTANCE(peek(vm, 0))) {
           runtimeError(vm, "Type %s has no properties.", getValueTypeString(value));
           return INTERPRET_RUNTIME_ERROR;

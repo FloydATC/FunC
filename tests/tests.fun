@@ -279,8 +279,11 @@ while(true) {
     }
   }
   debug("");
-  if (failed) { debug("*** " + failed.base(10) + " TESTS FAILED ***"); }
+  if (failed) debug("*** " + failed.base(10) + " TESTS FAILED ***"); 
   debug("Total:" + total.base(10) + " ok:" + ok.base(10));
   log += "Run completed.\n";
+
+
+  break;
 }
 

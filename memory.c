@@ -197,7 +197,7 @@ static void blackenObject(void* vm, Obj* object) {
     case OBJ_UPVALUE:
       markValue(vm, ((ObjUpvalue*)object)->closed);
       break;
-    case OBJ_NATIVEMETHOD:
+    case OBJ_NATIVE_METHOD:
       markValue(vm, ((ObjNativeMethod*)object)->receiver);
       break;
     case OBJ_NATIVE:
@@ -257,7 +257,7 @@ static void freeObject(void* vm, Obj* object) {
       FREE(vm, ObjNative, object);
       break;
     }
-    case OBJ_NATIVEMETHOD: {
+    case OBJ_NATIVE_METHOD: {
       FREE(vm, ObjNativeMethod, object);
       break;
     }

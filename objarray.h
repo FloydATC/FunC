@@ -23,7 +23,9 @@
 */
 
 
-bool arrayProperty(void* vm, Value receiver, ObjString* name);
+bool getArrayProperty(void* vm, Value receiver, ObjString* name, Value* property);
+bool pushArrayProperty(void* vm, Value receiver, ObjString* name);
+//bool arrayProperty(void* vm, Value receiver, ObjString* name);
 
 
 #endif

@@ -39,6 +39,24 @@
     return false; \
   }
 
+// ==== attributes ====
+
+// Native C attribute: NUMBER.char
+static bool number_char(void* vm, Value receiver, Value* result) {
+
+  // Return character of a utf8 codepoint
+  int bufsiz = 5;
+  char buf[bufsiz];
+  uint32_t codepoint = (uint32_t) AS_NUMBER(receiver);
+  int length = u8_toutf8(buf, bufsiz, &codepoint, 1);
+
+  *result = OBJ_VAL(copyString(vm, buf, length));
+  return true;
+
+}
+
+
+// ==== methods ====
 
 // Native C method: NUMBER.base()
 static bool number_base(void* vm, Value receiver, int argCount, Value* args, Value* result) {
@@ -106,37 +124,24 @@ static bool number_hypot(void* vm, Value receiver, int argCount, Value* args, Va
 }
 
 
-
 #define PROPERTY(fn_name,fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
-    result = NUMBER_VAL(fn_call(AS_NUMBER(receiver))); \
-    pop(vm); \
-    push(vm, result); \
+    *property = NUMBER_VAL(fn_call(AS_NUMBER(receiver))); \
     return true; \
   } \
 
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
-    result = OBJ_VAL(newNativeMethod(vm, receiver, fn_call)); \
-    pop(vm); \
-    push(vm, result); \
+    *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
     return true; \
   }
 
 
-bool numberProperty(void* vm, Value receiver, ObjString* name) {
-  Value result;
-  if (strcmp(name->chars, "char")==0) {
-    // Return character of a utf8 codepoint
-    int bufsiz = 5;
-    char buf[bufsiz];
-    uint32_t codepoint = (uint32_t) AS_NUMBER(receiver);
-    int length = u8_toutf8(buf, bufsiz, &codepoint, 1);
-    pop(vm);
-    push(vm, OBJ_VAL(copyString(vm, buf, length)));
-    return true;
-  }
+bool getNumberProperty(void* vm, Value receiver, ObjString* name, Value* property) {
 
+  if (strcmp(name->chars, "char")==0) return number_char(vm, receiver, property);
+
+  // These properties all call a native C function, take no arguments and return a number
   PROPERTY("sin",   sin);
   PROPERTY("cos",   cos);
   PROPERTY("tan",   tan);
@@ -158,6 +163,7 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
   PROPERTY("cbrt",  cbrt);
   PROPERTY("abs",   abs);
 
+  // These methods all call a C function defined above, take 1 argument and return a number
   METHOD("base",  number_base);
   METHOD("atan2", number_atan2);
   METHOD("pow",   number_pow);
@@ -167,6 +173,18 @@ bool numberProperty(void* vm, Value receiver, ObjString* name) {
   runtimeError(vm, "Number has no '%s'.", name->chars);
   return false;
 }
+
+
+// Get a number property, pop receiver and push the property
+bool pushNumberProperty(void* vm, Value receiver, ObjString* name) {
+  Value method;
+  if (!getNumberProperty(vm, receiver, name, &method)) return false;
+  pop(vm); // receiver
+  push(vm, method);
+  return true;
+}
+
+
 
 #undef PROPERTY
 #undef METHOD
