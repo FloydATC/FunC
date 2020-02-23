@@ -299,13 +299,16 @@ static int emitJump(VM* vm, uint8_t instruction) {
 }
 
 static void emitReturn(VM* vm) {
+  //printf("compiler:emitReturn() called\n");
   //if (current->type == TYPE_INITIALIZER) {
   if (vm->compiler->type == TYPE_INITIALIZER) {
+    //printf("compiler:emitReturn() type is TYPE_INITIALIZER\n");
     //emitBytes(OP_GET_LOCAL, 0);
     emitByte(vm, OP_GET_LOCAL);
     emitWord(vm, 0);
     // Stack slot zero contains the instance
   } else {
+    //printf("compiler:emitReturn() will return NULL\n");
     emitByte(vm, OP_NULL);
   }
   emitByte(vm, OP_RETURN);
@@ -1282,11 +1285,14 @@ static void function(VM* vm, FunctionType type) {
 }
 
 static void method(VM* vm) {
+  //printf("compiler:method() called\n");
   consume(vm, TOKEN_IDENTIFIER, "Expect method name.");
   uint16_t constant = identifierConstant(vm, &vm->parser->previous);
 
   FunctionType type = TYPE_METHOD;
-  if (vm->parser->previous.length == 4 && memcmp(&vm->parser->previous.start, "init", 4) == 0) {
+  //printf ("compiler:method() name is %.*s\n", vm->parser->previous.length, vm->parser->previous.start);
+  if (vm->parser->previous.length == 4 && memcmp(vm->parser->previous.start, "init", 4) == 0) {
+    //printf("compiler:method() type is TYPE_INITIALIZER\n");
     type = TYPE_INITIALIZER;
   }
   function(vm, type);
