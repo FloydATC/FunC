@@ -349,6 +349,10 @@ bool getStringProperty(void* vm, Value receiver, ObjString* name, Value* propert
     *property = NUMBER_VAL((double) codepoint[0]);
     return true;
   }
+  if (strcmp(name->chars, "num")==0) {
+    *property = NUMBER_VAL(str_to_double(string->chars, string->length, 10));
+    return true;
+  }
 
   METHOD("value",    string_value);
   METHOD("byte_at",  string_byte_at);
