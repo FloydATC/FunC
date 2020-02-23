@@ -2,6 +2,7 @@
 
 #include "objarray.h"
 #include "memory.h"
+#include "number.h"
 #include "object.h"
 #include "vm.h"
 
@@ -241,6 +242,12 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
     *result = array->values[0];
     return true;
   }
+  if (array->length == 1 && IS_NUMBER(array->values[0])) {
+    char* buf;
+    int length = double_to_str_dec(AS_NUMBER(array->values[0]), &buf);
+    *result = OBJ_VAL(takeString(vm, buf, length));
+    return true;
+  }
 
   // Get size of the string buffer needed, this also verifies all elements are strings
   ObjString* separator = AS_STRING(args[0]);
@@ -248,6 +255,11 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
   for (int i=0; i<array->length; i++) {
     if (IS_STRING(array->values[i])) {
       length += AS_STRING(array->values[i])->length;
+    } else if (IS_NUMBER(array->values[i])) {
+      char* buf;
+      int strlen = double_to_str_dec(AS_NUMBER(array->values[i]), &buf);
+      takeString(vm, buf, strlen);
+      length += strlen;
     } else {
       runtimeError(vm, "Can not join() non-string array element.");
       return false;
@@ -261,7 +273,14 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
   int offset = 0;
   for (int i=0; i<array->length; i++) {
     // Copy element
-    ObjString* element = AS_STRING(array->values[i]);
+    ObjString* element;
+    if (IS_STRING(array->values[i])) {
+      element = AS_STRING(array->values[i]);
+    } else if (IS_NUMBER(array->values[i])) {
+      char* buf;
+      int strlen = double_to_str_dec(AS_NUMBER(array->values[i]), &buf);
+      element = takeString(vm, buf, strlen);
+    }
     strncpy(buf+offset, element->chars, element->length);
     offset += element->length;
     // Copy separator unless we are at the last element
