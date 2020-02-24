@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "objarray.h"
 #include "memory.h"
@@ -9,6 +10,18 @@
 #define CHECK_ARG_IS_STRING(index) \
   if (argCount >= index+1 && !IS_STRING(args[index])) { \
     runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+    return false; \
+  }
+
+#define CHECK_ARG_IS_ARRAY(index) \
+  if (argCount >= index+1 && !IS_ARRAY(args[index])) { \
+    runtimeError(vm, "Argument %d must be an array, got %s.", index+1, getValueTypeString(args[index])); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ZERO() \
+  if (argCount > 0) { \
+    runtimeError(vm, "Method takes no arguments, got %d.", argCount); \
     return false; \
   }
 
@@ -27,6 +40,12 @@
 #define CHECK_ARGS_ONE() \
   if (argCount != 1) { \
     runtimeError(vm, "Method takes 1 argument, got %d.", argCount); \
+    return false; \
+  }
+
+#define CHECK_ARGS_ONE_OR_MORE() \
+  if (argCount < 1) { \
+    runtimeError(vm, "Method takes one or more argument, got %d.", argCount); \
     return false; \
   }
 
@@ -62,10 +81,8 @@ int copy_nested_array_elements(ObjArray* array, Value* buf, int offset) {
 // Native C method: ARRAY.shift()
 static bool array_shift(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   (unused)args; // Shift does not take any arguments
-  if (argCount > 0) {
-    runtimeError(vm, "Method does not take arguments.");
-    return false;
-  }
+  CHECK_ARGS_ZERO();
+
   ObjArray* array = AS_ARRAY(receiver);
   Value value = NULL_VAL;
 
@@ -87,10 +104,8 @@ static bool array_shift(void* vm, Value receiver, int argCount, Value* args, Val
 
 // Native C method: ARRAY.unshift()
 static bool array_unshift(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount == 0) {
-    runtimeError(vm, "Method needs atleast one argument.");
-    return false;
-  }
+  CHECK_ARGS_ONE_OR_MORE();
+
   ObjArray* array = AS_ARRAY(receiver);
 
   int length = array->length + argCount;
@@ -112,10 +127,8 @@ static bool array_unshift(void* vm, Value receiver, int argCount, Value* args, V
 // Native C method: ARRAY.pop()
 static bool array_pop(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   (unused)args; // pop() does not take any arguments
-  if (argCount > 0) {
-    runtimeError(vm, "Method does not take arguments.");
-    return false;
-  }
+  CHECK_ARGS_ZERO();
+
   ObjArray* array = AS_ARRAY(receiver);
   Value value = NULL_VAL;
 
@@ -136,10 +149,8 @@ static bool array_pop(void* vm, Value receiver, int argCount, Value* args, Value
 
 // Native C method: ARRAY.push()
 static bool array_push(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount == 0) {
-    runtimeError(vm, "Method needs atleast one argument.");
-    return false;
-  }
+  CHECK_ARGS_ONE_OR_MORE();
+
   ObjArray* array = AS_ARRAY(receiver);
 
   int length = array->length + argCount;
@@ -156,10 +167,8 @@ static bool array_push(void* vm, Value receiver, int argCount, Value* args, Valu
 
 // Native C method: ARRAY.fill()
 static bool array_fill(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method needs 1 argument.");
-    return false;
-  }
+  CHECK_ARGS_ONE();
+
   ObjArray* array = AS_ARRAY(receiver);
 
   for (int i=0; i<array->length; i++) {
@@ -172,10 +181,8 @@ static bool array_fill(void* vm, Value receiver, int argCount, Value* args, Valu
 
 // Native C method: ARRAY.resize()
 static bool array_resize(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1) {
-    runtimeError(vm, "Method takes 1 argument.");
-    return false;
-  }
+  CHECK_ARGS_ONE();
+
   ObjArray* array = AS_ARRAY(receiver);
 
   int length = array->length;
@@ -201,10 +208,8 @@ static bool array_resize(void* vm, Value receiver, int argCount, Value* args, Va
 // Native C method: ARRAY.flat()
 static bool array_flat(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   (unused)args;
-  if (argCount != 0) {
-    runtimeError(vm, "Method does not take any arguments.");
-    return false;
-  }
+  CHECK_ARGS_ZERO();
+
   ObjArray* array = AS_ARRAY(receiver);
 
   // Recursively scan nested arrays and summarize the elements
@@ -212,7 +217,9 @@ static bool array_flat(void* vm, Value receiver, int argCount, Value* args, Valu
 
   // Create a new array
   ObjArray* res = newArray(vm);
+  push(vm, OBJ_VAL(res)); // Protect from GC
   res->values = ALLOCATE(vm, Value, length);
+  pop(vm);
   res->length = length;
 
   // Recursively copy nested arrays elements into buffer
@@ -225,10 +232,9 @@ static bool array_flat(void* vm, Value receiver, int argCount, Value* args, Valu
 
 // Native C method: ARRAY.join()
 static bool array_join(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  if (argCount != 1 || !IS_STRING(args[0])) {
-    runtimeError(vm, "Method takes 1 string argument.");
-    return false;
-  }
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_STRING(0);
+
   ObjArray* array = AS_ARRAY(receiver);
 
   // Edge case: Joining an array with 0 elements returns empty string
@@ -296,6 +302,57 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
   return true;
 }
 
+
+// Native C method: ARRAY.mul4()
+static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  CHECK_ARGS_ONE();
+  CHECK_ARG_IS_ARRAY(0);
+
+  ObjArray* m1 = AS_ARRAY(receiver);
+  ObjArray* m2 = AS_ARRAY(args[0]);
+
+  int m1rows = 4;
+  int m1cols = m1->length / m1rows;
+  int m2rows = m2->length / m1rows;
+  int m2cols = m1rows;
+
+  if (m1->length == 0 || m1->length % m1rows != 0) runtimeError(vm, "First array bad length %d.", m1->length);
+  if (m2->length == 0 || m2->length % m2cols != 0) runtimeError(vm, "Second array bad length %d.", m2->length);
+
+  // Create output array
+  ObjArray* product = newArray(vm);
+  push(vm, OBJ_VAL(product)); // Protect from GC
+  product->values = ALLOCATE(vm, Value, m1rows*m2cols);
+  pop(vm);
+  //printf("objarray:array_mul4() product->values:\n");
+  //hexdump(product->values, 16*sizeof(Value));
+  product->length = m1rows*m2cols;
+
+  //printf("objarray:array_mul4() product->values:\n");
+  //hexdump(product->values, 16*sizeof(Value));
+
+  // Multiply
+  for (int i=0; i<m1rows; i++) {
+    for (int j=0; j<m2cols; j++) {
+      double sum = 0;
+      for (int k=0; k<m1cols; k++) {
+        sum += AS_NUMBER(m1->values[(i*m1rows)+k]) * AS_NUMBER(m2->values[(k*m2rows)+j]);
+      }
+      //int offset = (i*m1rows)+j;
+      //printf("objarray:array_mul4() product->values=%p rows=%d cols=%d\n", product->values, m1rows, m2cols);
+      //printf("objarray:array_mul4() sizeof(Value)=%d\n", (int) sizeof(Value));
+      //printf("objarray:array_mul4() row=%d col=%d offset=%d sum=%f\n", i*m1rows, j, offset, sum);
+      //hexdump(product->values, 16*sizeof(Value));
+      product->values[(i*m1rows)+j] = NUMBER_VAL(sum);
+    }
+  }
+
+  *result = OBJ_VAL(product);
+  return true;
+}
+
+
+
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
     *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
@@ -321,6 +378,7 @@ bool getArrayProperty(void* vm, Value receiver, ObjString* name, Value* property
   METHOD("resize",  array_resize);
   METHOD("flat",    array_flat);
   METHOD("join",    array_join);
+  METHOD("mul4",    array_mul4);
 
   runtimeError(vm, "Array has no '%s'.", name->chars);
   return false;

@@ -695,6 +695,7 @@ VM* initVM() {
   vm->compiler = NULL;
   vm->currentClass = NULL;
 
+  vm->initString = NULL;
   vm->initString = copyString(vm, "init", 4);
 
   defineNative(vm, "clock", clockNative);
