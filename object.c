@@ -152,6 +152,23 @@ ObjArray* newArray(void* vm) {
   return array;
 }
 
+ObjArray* newArrayZeroed(void* vm, int length) {
+#ifdef DEBUG_TRACE_OBJECTS
+  printf("object:newArray()\n");
+#endif
+  ObjArray* array = ALLOCATE_OBJ(vm, ObjArray, OBJ_ARRAY);
+  array->length = 0;
+  push(vm, OBJ_VAL(array));
+  array->values = ALLOCATE(vm, Value, length);
+  for (int i=0; i<length; i++) array->values[i] = NULL_VAL;
+  pop(vm);
+  array->length = length;
+#ifdef DEBUG_TRACE_OBJECTS
+  printf("object:newArray() allocated empty array %p\n", array);
+#endif
+  return array;
+}
+
 void loadArray(void* vm, ObjArray* array, Value* values, int length) {
 #ifdef DEBUG_TRACE_OBJECTS
   printf("object:loadArray() loading from stack array=%p values=%p length=%d\n", array, values, length);

@@ -71,10 +71,7 @@ int substr_offset(const char* string, const char* substr) {
 // Split string into want_parts at every occurrence of delim
 // Warning: want_parts *must* be within range, use count_substr() for this
 ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_parts) {
-  ObjArray* res = newArray(vm);
-  push(vm, OBJ_VAL(res)); // Protect from GC
-  res->values = ALLOCATE(vm, Value, want_parts);
-  pop(vm);
+  ObjArray* res = newArrayZeroed(vm, want_parts);
   int element_length;
   int delim_length = strlen(delim);
   int offset = 0;
@@ -90,7 +87,6 @@ ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_p
       res->values[i] = OBJ_VAL(copyString(vm, string+offset, strlen(string+i)));
     }
     //printf("objstring:split_string() i=%d element='%s'\n", i, AS_CSTRING(res->values[i]));
-    res->length++; // Increase array length carefully because copyString may trigger GC
   }
   return res;
 }
@@ -99,10 +95,7 @@ ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_p
 ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
   if (want_parts == -1 || want_parts > (int) strlen(string)) want_parts = strlen(string);
   //printf("objstring:chars_to_array() string=%s want=%d\n", string, want_parts);
-  ObjArray* res = newArray(vm);
-  push(vm, OBJ_VAL(res));
-  res->values = ALLOCATE(vm, Value, want_parts);
-  pop(vm);
+  ObjArray* res = newArrayZeroed(vm, want_parts);
   for (int i=0; i<want_parts; i++) {
     if (i < want_parts-1) {
       //printf("next element: %d\n", i);
@@ -114,7 +107,6 @@ ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
       res->values[i] = OBJ_VAL(copyString(vm, string+i, rest));
     }
     //printf("objstring:chars_to_array() i=%d element='%s'\n", i, AS_CSTRING(res->values[i]));
-    res->length++; // Increase array length carefully because copyString may trigger GC
   }
   return res;
 }

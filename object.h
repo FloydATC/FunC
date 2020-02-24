@@ -129,6 +129,7 @@ ObjInstance* newInstance(void* vm, ObjClass* klass);
 ObjNative* newNative(void* vm, ObjString* name, NativeFn function);
 ObjNativeMethod* newNativeMethod(void* vm, Value receiver, ObjString* name, NativeMFn function);
 ObjArray* newArray(void* vm);
+ObjArray* newArrayZeroed(void* vm, int length);
 void loadArray(void* vm, ObjArray* array, Value* values, int length);
 ObjString* takeString(void* vm, char* chars, int length);
 ObjString* copyString(void* vm, const char* chars, int length);

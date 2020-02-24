@@ -51,7 +51,7 @@
 
 
 
-// Utility method: recursively count elements in nested array
+// Utility function: recursively count elements in nested array
 int count_nested_array_elements(ObjArray* array) {
   int length = 0;
   for (int i=0; i<array->length; i++) {
@@ -64,7 +64,7 @@ int count_nested_array_elements(ObjArray* array) {
   return length;
 }
 
-// Utility method: recursively count elements in nested array
+// Utility function: recursively count elements in nested array
 int copy_nested_array_elements(ObjArray* array, Value* buf, int offset) {
   for (int i=0; i<array->length; i++) {
     if (IS_ARRAY(array->values[i])) {
@@ -74,6 +74,41 @@ int copy_nested_array_elements(ObjArray* array, Value* buf, int offset) {
     }
   }
   return offset;
+}
+
+// Utility function: matrix multiplication
+// Perform matrix multiplication assuming m1 columns == major == m2 rows
+void multiply_matrices(int major, ObjArray* m1, ObjArray* m2, ObjArray** product) {
+  int m1rows = m1->length / major;
+  int m1cols = major; // = m2rows
+  int m2cols = m2->length / major;
+
+  for (int i=0; i<m1rows; i++) {
+    for (int j=0; j<m2cols; j++) {
+      double sum = 0;
+      for (int k=0; k<m1cols; k++) {
+        sum += AS_NUMBER(m1->values[(i*m1cols)+k]) * AS_NUMBER(m2->values[(k*m2cols)+j]);
+      }
+      (*product)->values[(i*m2cols)+j] = NUMBER_VAL(sum);
+    }
+  }
+
+}
+
+
+// Utility function:
+// Verify both array lengths are multiples of size
+// (which means we can interpret as m1 columns == m2 rows)
+bool can_multiply_matrices(void* vm, int major, ObjArray* m1, ObjArray* m2) {
+  if (m1->length == 0 || m1->length % major != 0) {
+    runtimeError(vm, "Base array not multiple of %d.", major);
+    return false;
+  }
+  if (m2->length == 0 || m2->length % major != 0) {
+    runtimeError(vm, "Argument array multiple of %d.", major);
+    return false;
+  }
+  return true;
 }
 
 
@@ -216,11 +251,7 @@ static bool array_flat(void* vm, Value receiver, int argCount, Value* args, Valu
   int length = count_nested_array_elements(array);
 
   // Create a new array
-  ObjArray* res = newArray(vm);
-  push(vm, OBJ_VAL(res)); // Protect from GC
-  res->values = ALLOCATE(vm, Value, length);
-  pop(vm);
-  res->length = length;
+  ObjArray* res = newArrayZeroed(vm, length);
 
   // Recursively copy nested arrays elements into buffer
   copy_nested_array_elements(array, res->values, 0);
@@ -304,65 +335,43 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
 
 
 
-
-
-// Native C method: ARRAY.mul4() -- ROW MAJOR matrix multiplication with 4 rows
-static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+// Common function: ROW MAJOR matrix multiplication with N rows
+static bool array_mulN(void* vm, int major, Value receiver, int argCount, Value* args, Value* result) {
   CHECK_ARGS_ONE();
   CHECK_ARG_IS_ARRAY(0);
 
   ObjArray* m1 = AS_ARRAY(receiver);
   ObjArray* m2 = AS_ARRAY(args[0]);
 
-  int size = 4;
-
-  if (m1->length == 0 || m1->length % size != 0) {
-    runtimeError(vm, "Array 1 not multiple of %d.", size);
-    return false;
-  }
-  if (m2->length == 0 || m2->length % size != 0) {
-    runtimeError(vm, "Array 2 not multiple of %d.", size);
-    return false;
-  }
-
-  int m1rows = m1->length / size;
-  int m1cols = size;
-  //int m2rows = size;
-  int m2cols = m2->length / size;
+  // Verify sizes
+  if (can_multiply_matrices(vm, major, m1, m2) == false) return false;
 
   // Create output array
-  ObjArray* product = newArray(vm);
-  push(vm, OBJ_VAL(product)); // Protect from GC
-  product->values = ALLOCATE(vm, Value, m1rows*m2cols);
-  pop(vm);
-  //printf("objarray:array_mul4() product->values:\n");
-  //hexdump(product->values, 16*sizeof(Value));
-  product->length = m1rows*m2cols;
-  //printf("objarray:array_mul4() product->values=%p rows=%d cols=%d length=%d\n", product->values, m1rows, m2cols, product->length);
-  //printf("objarray:array_mul4() sizeof(Value)=%d\n", (int) sizeof(Value));
-
-  //printf("objarray:array_mul4() product->values:\n");
-  //hexdump(product->values, 16*sizeof(Value));
+  int m1rows = m1->length / major;
+  int m2cols = m2->length / major;
+  ObjArray* product = newArrayZeroed(vm, m1rows*m2cols);
 
   // Multiply
-  for (int i=0; i<m1rows; i++) {
-    for (int j=0; j<m2cols; j++) {
-      double sum = 0;
-      for (int k=0; k<m1cols; k++) {
-        //printf("objarray:array_mul4() sum += m1[%d,%d] %f * m2[%d,%d] %f\n", i, k, AS_NUMBER(m1->values[(i*m1cols)+k]), k, j, AS_NUMBER(m2->values[(k*m2cols)+j]));
-        sum += AS_NUMBER(m1->values[(i*m1cols)+k]) * AS_NUMBER(m2->values[(k*m2cols)+j]);
-      }
-      //int offset = (i*m1rows)+j;
-      //printf("objarray:array_mul4() row=%d*%d col=%d sum=%f\n", i, m2cols, j, sum);
-      //hexdump(product->values, 16*sizeof(Value));
-      product->values[(i*m2cols)+j] = NUMBER_VAL(sum);
-    }
-  }
+  multiply_matrices(major, m1, m2, &product);
 
   *result = OBJ_VAL(product);
   return true;
 }
 
+// Native C method: ARRAY.mul2() -- ROW MAJOR matrix multiplication with 2 rows
+static bool array_mul2(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  return array_mulN(vm, 2, receiver, argCount, args, result);
+}
+
+// Native C method: ARRAY.mul3() -- ROW MAJOR matrix multiplication with 3 rows
+static bool array_mul3(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  return array_mulN(vm, 3, receiver, argCount, args, result);
+}
+
+// Native C method: ARRAY.mul4() -- ROW MAJOR matrix multiplication with 4 rows
+static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Value* result) {
+  return array_mulN(vm, 4, receiver, argCount, args, result);
+}
 
 
 #define METHOD(fn_name, fn_call) \
@@ -391,6 +400,8 @@ bool getArrayProperty(void* vm, Value receiver, ObjString* name, Value* property
   METHOD("flat",    array_flat);
   METHOD("join",    array_join);
 
+  METHOD("mul2",    array_mul2);
+  METHOD("mul3",    array_mul3);
   METHOD("mul4",    array_mul4);
 
   runtimeError(vm, "Array has no '%s'.", name->chars);
