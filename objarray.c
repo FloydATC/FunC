@@ -303,7 +303,10 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
 }
 
 
-// Native C method: ARRAY.mul4()
+
+
+
+// Native C method: ARRAY.mul4() -- ROW MAJOR matrix multiplication with 4 rows
 static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Value* result) {
   CHECK_ARGS_ONE();
   CHECK_ARG_IS_ARRAY(0);
@@ -311,13 +314,21 @@ static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Valu
   ObjArray* m1 = AS_ARRAY(receiver);
   ObjArray* m2 = AS_ARRAY(args[0]);
 
-  int m1rows = 4;
-  int m1cols = m1->length / m1rows;
-  int m2rows = m2->length / m1rows;
-  int m2cols = m1rows;
+  int size = 4;
 
-  if (m1->length == 0 || m1->length % m1rows != 0) runtimeError(vm, "First array bad length %d.", m1->length);
-  if (m2->length == 0 || m2->length % m2cols != 0) runtimeError(vm, "Second array bad length %d.", m2->length);
+  if (m1->length == 0 || m1->length % size != 0) {
+    runtimeError(vm, "Array 1 not multiple of %d.", size);
+    return false;
+  }
+  if (m2->length == 0 || m2->length % size != 0) {
+    runtimeError(vm, "Array 2 not multiple of %d.", size);
+    return false;
+  }
+
+  int m1rows = m1->length / size;
+  int m1cols = size;
+  //int m2rows = size;
+  int m2cols = m2->length / size;
 
   // Create output array
   ObjArray* product = newArray(vm);
@@ -327,6 +338,8 @@ static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Valu
   //printf("objarray:array_mul4() product->values:\n");
   //hexdump(product->values, 16*sizeof(Value));
   product->length = m1rows*m2cols;
+  //printf("objarray:array_mul4() product->values=%p rows=%d cols=%d length=%d\n", product->values, m1rows, m2cols, product->length);
+  //printf("objarray:array_mul4() sizeof(Value)=%d\n", (int) sizeof(Value));
 
   //printf("objarray:array_mul4() product->values:\n");
   //hexdump(product->values, 16*sizeof(Value));
@@ -336,14 +349,13 @@ static bool array_mul4(void* vm, Value receiver, int argCount, Value* args, Valu
     for (int j=0; j<m2cols; j++) {
       double sum = 0;
       for (int k=0; k<m1cols; k++) {
-        sum += AS_NUMBER(m1->values[(i*m1rows)+k]) * AS_NUMBER(m2->values[(k*m2rows)+j]);
+        //printf("objarray:array_mul4() sum += m1[%d,%d] %f * m2[%d,%d] %f\n", i, k, AS_NUMBER(m1->values[(i*m1cols)+k]), k, j, AS_NUMBER(m2->values[(k*m2cols)+j]));
+        sum += AS_NUMBER(m1->values[(i*m1cols)+k]) * AS_NUMBER(m2->values[(k*m2cols)+j]);
       }
       //int offset = (i*m1rows)+j;
-      //printf("objarray:array_mul4() product->values=%p rows=%d cols=%d\n", product->values, m1rows, m2cols);
-      //printf("objarray:array_mul4() sizeof(Value)=%d\n", (int) sizeof(Value));
-      //printf("objarray:array_mul4() row=%d col=%d offset=%d sum=%f\n", i*m1rows, j, offset, sum);
+      //printf("objarray:array_mul4() row=%d*%d col=%d sum=%f\n", i, m2cols, j, sum);
       //hexdump(product->values, 16*sizeof(Value));
-      product->values[(i*m1rows)+j] = NUMBER_VAL(sum);
+      product->values[(i*m2cols)+j] = NUMBER_VAL(sum);
     }
   }
 
@@ -378,6 +390,7 @@ bool getArrayProperty(void* vm, Value receiver, ObjString* name, Value* property
   METHOD("resize",  array_resize);
   METHOD("flat",    array_flat);
   METHOD("join",    array_join);
+
   METHOD("mul4",    array_mul4);
 
   runtimeError(vm, "Array has no '%s'.", name->chars);
