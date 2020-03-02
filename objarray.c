@@ -293,8 +293,15 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
     return true;
   }
 
+  // Separator is optional
+  ObjString* separator;
+  if (argCount == 1) {
+    separator = AS_STRING(args[0]);
+  } else {
+    separator = copyString(vm, "", 0);
+  }
+
   // Get size of the string buffer needed, this also verifies all elements are strings
-  ObjString* separator = AS_STRING(args[0]);
   int length = (array->length-1) * separator->length;
   for (int i=0; i<array->length; i++) {
     if (IS_STRING(array->values[i])) {
