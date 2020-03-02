@@ -7,18 +7,25 @@
 #include "object.h"
 #include "vm.h"
 
+
+// Type macros only care about type of arguments
 #define CHECK_ARG_IS_STRING(index) \
-  if (argCount >= index+1 && !IS_STRING(args[index])) { \
-    runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
-    return false; \
+  if (argCount >= index+1) { \
+    if (!IS_STRING(args[index])) { \
+      runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+      return false; \
+    } \
   }
 
 #define CHECK_ARG_IS_ARRAY(index) \
-  if (argCount >= index+1 && !IS_ARRAY(args[index])) { \
-    runtimeError(vm, "Argument %d must be an array, got %s.", index+1, getValueTypeString(args[index])); \
-    return false; \
+  if (argCount >= index+1) { \
+    if(!IS_ARRAY(args[index])) { \
+      runtimeError(vm, "Argument %d must be an array, got %s.", index+1, getValueTypeString(args[index])); \
+      return false; \
+    } \
   }
 
+// Count macros only care number of arguments
 #define CHECK_ARGS_ZERO() \
   if (argCount > 0) { \
     runtimeError(vm, "Method takes no arguments, got %d.", argCount); \
@@ -263,7 +270,7 @@ static bool array_flat(void* vm, Value receiver, int argCount, Value* args, Valu
 
 // Native C method: ARRAY.join()
 static bool array_join(void* vm, Value receiver, int argCount, Value* args, Value* result) {
-  CHECK_ARGS_ONE();
+  CHECK_ARGS_ZERO_OR_ONE();
   CHECK_ARG_IS_STRING(0);
 
   ObjArray* array = AS_ARRAY(receiver);
