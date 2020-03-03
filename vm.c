@@ -1339,98 +1339,29 @@ InterpretResult run(VM* vm) {
 #undef BINARY_OP
 }
 
-InterpretResult includeFile(VM* vm, const char* fname) {
-  // If already included, return INTERPRET_COMPILED to avoid circular references and redefines
-  // ...
 
-  // We need to search a set of "include" directories
-  // ...
 
-  // At this early testing stage we require FQFN
-  InterpretResult res;
-  char* source;
-  int bytes = readFile(fname, &source);
-  if (bytes > 0) {
-    res = interpret(vm, source);
-    printf("main:includeFile() free(%p) // source\n", (void*) source);
-    free(source);
-  } else {
-    res = INTERPRET_COMPILE_ERROR;
-  }
-  return res;
+static ObjFunction* interpret_inner(VM* vm, const char* source) {
+  int fileno = -1; // Temp
+  return compile(vm, fileno, source);
 }
 
-InterpretResult processDirective(VM* vm, const char* line, int linelen) {
-  InterpretResult res;
-  printf("processDirective()\n");
-  char* eos = ">"; // Enf-of-string characters
-  // The following directives are supported:
-  //  #include <filename>
-  // All other directives are silently ignored
-  if (linelen >= 10 && strncmp(line, "#include <", 10)==0) {
-    printf("processDirective() #include\n");
-    int fname_len = strcspn(line+10,eos);
-    if (fname_len > 0) {
-      char* fname = malloc(sizeof(char) * fname_len + 1);
-      strncpy(fname, line+10, fname_len);
-      fname[fname_len] = '\0';
-      printf("processDirective() Including file \"%s\"\n", fname);
-      res = includeFile(vm, fname);
-      printf("main:processDirective() free(%p) // fname\n", (void*) fname);
-      free(fname);
-      if (res != INTERPRET_COMPILED) { return res; }
-    } else {
-      printf("#include directive must be followed by a filename\n");
-      return INTERPRET_COMPILE_ERROR;
-    }
-  }
-  return INTERPRET_COMPILED;
-}
-
-InterpretResult preprocess(VM* vm, const char* source) {
-  // Quickly scan for lines that begin with # and process them as directives
-  int srclen = strlen(source);
-  int ln = 0;
-  int first = 0;
-  InterpretResult res;
-  for (int i=0; i<srclen; i++) {
-    if (source[i] == '\n') {
-      if (source[first] == '#') {
-        res = processDirective(vm, source+first, i-first);
-        if (res != INTERPRET_COMPILED) { return res; }
-      }
-      ln++;
-      first = i+1;
-    }
-  }
-  return INTERPRET_COMPILED;
+static void setup_initial_callframe(VM* vm, ObjFunction* function) {
+  // Set up the very first CallFrame to begin executing the top level code of the script
+  push(vm, OBJ_VAL(function));
+  ObjClosure* closure = newClosure(vm, function);
+  pop(vm);
+  push(vm, OBJ_VAL(closure));
+  callValue(vm, OBJ_VAL(closure), 0);
+  return;
 }
 
 InterpretResult interpret(VM* vm, const char* source) {
-  InterpretResult res;
-  printf("vm:interpret() preprocess source length=%d\n", (int) strlen(source));
-  res = preprocess(vm, source); // May call interpret() recursively if #include directives are encountered
-  printf("vm:interpret() preprocess result=%d\n", res);
-  if (res != INTERPRET_COMPILED) { return res; }
-
-  int fileno = -1; // Temp
-  printf("vm:interpret() compile fileno=%d source length=%d\n", fileno, (int) strlen(source));
-  ObjFunction* function = compile(vm, fileno, source);
-  printf("vm:interpret() compile function=%p\n", function);
+  ObjFunction* function = interpret_inner(vm, source);
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
-
-  push(vm, OBJ_VAL(function));
-  printf("vm:interpret() creating closure\n");
-  ObjClosure* closure = newClosure(vm, function);
-  printf("vm:interpret() closure=%p\n", closure);
-  pop(vm);
-  push(vm, OBJ_VAL(closure));
-  printf("vm:interpret() calling closure\n");
-  callValue(vm, OBJ_VAL(closure), 0);
-  printf("vm:interpret() interpret returning successfully\n");
-
+  printf("====== compilation complete ======\n");
+  setup_initial_callframe(vm, function);
   return INTERPRET_COMPILED;
-  //return run();
 }
 
 
