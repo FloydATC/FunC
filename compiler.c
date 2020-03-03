@@ -975,7 +975,10 @@ static void string(VM* vm, bool canAssign) {
 
   //emitConstant(OBJ_VAL(copyString(vm->parser->previous.start + 1,
   //                                vm->parser->previous.length - 2)));
-  emitConstant(vm, OBJ_VAL(copyString(vm, o_str, o)));
+  Value string_obj = OBJ_VAL(copyString(vm, o_str, o));
+  push(vm, string_obj);
+  emitConstant(vm, string_obj);
+  pop(vm);
 #ifdef DEBUG_TRACE_MEMORY_VERBOSE
   printf("compiler:string() free(%p) // temp buffer\n", (void*)o_str );
 #endif // DEBUG_TRACE_MEMORY_VERBOSE
