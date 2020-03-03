@@ -87,6 +87,28 @@ Value to_numberValue(double n) {
   return NUMBER_VAL(n);
 }
 
+Value to_stringValueArray(VM* vm, const char** cstr, int array_length) {
+  // We will use the VM's stack to temporarily hold each string value,
+  // both to prevent them from being garbage collected, and to create the array
+  for (int i=0; i<array_length; i++) {
+    int string_length = (int) strlen(cstr[i]);
+    ObjString* obj = copyString(vm, cstr[i], string_length);
+    push(vm, OBJ_VAL(obj));
+  }
+  makeArray(vm, array_length);
+  return pop(vm);
+}
+
+Value to_numberValueArray(VM* vm, const double* number, int array_length) {
+  // We will use the VM's stack to temporarily hold each number value,
+  // so we can use the VM's internal function to create the array
+  for (int i=0; i<array_length; i++) {
+    push(vm, NUMBER_VAL(number[i]));
+  }
+  makeArray(vm, array_length);
+  return pop(vm);
+}
+
 Value to_stringValue(VM* vm, const char* cstr) {
   // We do not own cstr so we must copy it
   //printf("vm:to_stringValue() must import %p\n", (void*)cstr);
@@ -487,7 +509,7 @@ static void concatenateStrings(VM* vm) {
 
 
 // Pop the specified number of values, push an Array containing those values
-static void makeArray(VM* vm, uint8_t length) {
+void makeArray(VM* vm, uint8_t length) {
   //printf("vm:makeArray() calling newArray()\n");
   // Create ObjArray and immediately push it onto the stack
   ObjArray* object = newArray(vm);

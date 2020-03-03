@@ -64,6 +64,8 @@ typedef struct FunVM {
 // API functions
 Value to_numberValue(double n);
 Value to_stringValue(VM* vm, const char* cstr);
+Value to_stringValueArray(VM* vm, const char** cstr, int array_length);
+Value to_numberValueArray(VM* vm, const double* number, int array_length);
 double to_double(Value v);
 char* to_cstring(Value v);
 bool is_number(Value v);
@@ -78,6 +80,7 @@ InterpretResult run(VM* vm);
 InterpretResult interpret(VM* vm, const char* source);
 void push(VM* vm, Value value);
 Value pop(VM* vm);
+void makeArray(VM* vm, uint8_t length);
 
 
 
