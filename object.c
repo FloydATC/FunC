@@ -203,6 +203,9 @@ static ObjString* allocateString(void* vm, char* chars, int length, uint32_t has
   tableSet(vm, &((VM*)vm)->strings, string, NULL_VAL);
   pop(vm);
 
+#ifdef DEBUG_TRACE_OBJECTS
+  printf("object:allocateString() returning %p\n", string);
+#endif
   return string;
 }
 
