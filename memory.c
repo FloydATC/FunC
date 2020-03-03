@@ -74,7 +74,7 @@ void* reallocate(void* vm, void* previous, size_t oldSize, size_t newSize) {
 #ifdef DEBUG_TRACE_MEMORY
   printf("memory:reallocate() realloc(%p, %d) (%d -> %d)\n", previous, (int)newSize, (int)oldSize, (int)newSize);
 #ifdef DEBUG_TRACE_MEMORY_HEXDUMP
-  hexdump(previous, oldSize);
+  if (oldSize > 0) hexdump(previous, oldSize);
 #endif
 #endif
   void* ptr = realloc(previous, newSize);
