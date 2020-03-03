@@ -65,7 +65,9 @@ typedef struct FunVM {
 Value to_numberValue(double n);
 Value to_stringValue(VM* vm, const char* cstr);
 Value to_stringValueArray(VM* vm, const char** cstr, int array_length);
-Value to_numberValueArray(VM* vm, const double* number, int array_length);
+Value to_numberValueArray(VM* vm, double* number, int array_length);
+Value to_instanceValue(VM* vm, const char** fields, Value* values, int length);
+Value to_nativeValue(VM* vm, const char* name, NativeFn function);
 double to_double(Value v);
 char* to_cstring(Value v);
 bool is_number(Value v);
@@ -73,7 +75,8 @@ bool is_string(Value v);
 
 VM* initVM();
 void freeVM(VM* vm);
-void defineNative(VM* vm, const char* name, NativeFn function);
+void defineGlobal(VM* vm, const char* name, Value value);
+void defineNative(VM* vm, const char* name, NativeFn function); // DEPRECATED
 void set_error_callback(VM* vm, ErrorCb ptr);
 void runtimeError(VM* vm, const char* format, ...);
 InterpretResult run(VM* vm);

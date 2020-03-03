@@ -87,19 +87,52 @@ Value to_numberValue(double n) {
   return NUMBER_VAL(n);
 }
 
+
+Value to_nativeValue(VM* vm, const char* name, NativeFn function) {
+  ObjString* name_obj = copyString(vm, name, (int)strlen(name));
+  push(vm, OBJ_VAL(name_obj));
+  Value native = OBJ_VAL(newNative(vm, name_obj, function));
+  pop(vm); // name_obj
+  return native;
+}
+
+// API function: return a "native" object instance populated with fields
+Value to_instanceValue(VM* vm, const char** fields, Value* values, int length) {
+  //printf("vm:to_instanceValue() constructing instance with %d member values\n", length);
+  // First we create an empty "native" class using a name that users can't refer to
+  ObjString* klassname = copyString(vm, "*", 1);
+  push(vm, OBJ_VAL(klassname));
+  ObjClass* klass = newClass(vm, klassname);
+  push(vm, OBJ_VAL(klass)); // Store temporarily
+  // Instantiate the class
+  ObjInstance* instance = newInstance(vm, klass);
+  push(vm, OBJ_VAL(instance)); // Store temporarily
+  // Now populate the instance with the fields/values specified
+  for (int i=0; i<length; i++) {
+    ObjString* fieldname = copyString(vm, fields[i], (int) strlen(fields[i]));
+    push(vm, OBJ_VAL(fieldname));
+    tableSet(vm, &instance->fields, fieldname, values[i]);
+    //printf("vm:to_instanceValue() member %d name=%s value=%s\n", i, fields[i], getValueTypeString(values[i]));
+    pop(vm); // fieldname is now referenced by the instance, which is on the stack
+  }
+  pop(vm); // instance
+  pop(vm); // klass
+  pop(vm); // klassname
+  return OBJ_VAL(instance);
+}
+
 Value to_stringValueArray(VM* vm, const char** cstr, int array_length) {
   // We will use the VM's stack to temporarily hold each string value,
   // both to prevent them from being garbage collected, and to create the array
   for (int i=0; i<array_length; i++) {
-    int string_length = (int) strlen(cstr[i]);
-    ObjString* obj = copyString(vm, cstr[i], string_length);
+    ObjString* obj = copyString(vm, cstr[i], (int) strlen(cstr[i]));
     push(vm, OBJ_VAL(obj));
   }
   makeArray(vm, array_length);
   return pop(vm);
 }
 
-Value to_numberValueArray(VM* vm, const double* number, int array_length) {
+Value to_numberValueArray(VM* vm, double* number, int array_length) {
   // We will use the VM's stack to temporarily hold each number value,
   // so we can use the VM's internal function to create the array
   for (int i=0; i<array_length; i++) {
@@ -198,18 +231,6 @@ static bool sleepNative(void* vm, int argCount, Value* args, Value* result) {
 }
 
 
-// Native C function: c_test()
-static bool c_test(void* vm, int argCount, Value* args, Value* result) {
-  (unused)vm;
-  printf("c_test() argCount=%d\n", argCount);
-  printf("c_test() args pointer=%p\n", args);
-  for (int i=0; i<argCount; i++) {
-    printf("c_test() arg%d=%g\n", i, AS_NUMBER(args[i]));
-  }
-  *result = NUMBER_VAL((double) 234);
-  return true;
-}
-
 
 
 void set_error_callback(VM* vm, ErrorCb ptr) {
@@ -217,14 +238,28 @@ void set_error_callback(VM* vm, ErrorCb ptr) {
 }
 
 
+// API function: Add a named value to the global namespace
+void defineGlobal(VM* vm, const char* name, Value value) {
+  push(vm, value); // Store temporarily
+  ObjString* name_obj = copyString(vm, name, (int)strlen(name));
+  push(vm, OBJ_VAL(name_obj)); // Store temporarily
+  tableSet(vm, &vm->globals, name_obj, value);
+  pop(vm); // name_obj
+  pop(vm); // value
+  return;
+}
 
+// API function: Create a named native function and add it to the global namespace
+// DEPRECATED: use to_nativeValue() + defineGlobal() instead
 void defineNative(VM* vm, const char* name, NativeFn function) {
   ObjString* name_obj = copyString(vm, name, (int)strlen(name));
   push(vm, OBJ_VAL(name_obj));
-  push(vm, OBJ_VAL(newNative(vm, name_obj, function)));
+  Value native = OBJ_VAL(newNative(vm, name_obj, function));
+  push(vm, native);
   tableSet(vm, &vm->globals, AS_STRING(vm->stack[0]), vm->stack[1]);
   pop(vm);
   pop(vm);
+  return;
 }
 
 void freeVM(VM* vm) {
@@ -722,7 +757,6 @@ VM* initVM() {
 
   defineNative(vm, "clock", clockNative);
   defineNative(vm, "sleep", sleepNative);
-  defineNative(vm, "c_test", c_test);
 
   return vm;
 }
