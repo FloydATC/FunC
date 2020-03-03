@@ -1,3 +1,3 @@
 
 
-char* readFile(const char* path);
+int readFile(const char* path, char** buffer);

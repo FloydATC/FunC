@@ -6,7 +6,8 @@
 #include "file.h"
 
 
-char* readFile(const char* path) {
+int readFile(const char* path, char** buffer) {
+  printf("file:readFile() path=%s\n", path);
   FILE* file = fopen(path, "rb");
   if (file == NULL) {
     fprintf(stderr, "Could not open file \"%s\".\n", path);
@@ -14,26 +15,35 @@ char* readFile(const char* path) {
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
       printf("Current working dir: %s\n", cwd);
     }
-    exit(74);
+    return(-74);
   }
+  printf("file:readFile() open successful, seek to end\n");
 
   fseek(file, 0L, SEEK_END);
   size_t fileSize = ftell(file);
+  printf("file:readFile() file size is %d bytes, rewinding\n", (int)fileSize);
   rewind(file);
 
-  char* buffer = (char*)malloc(fileSize + 1);
-  if (buffer == NULL) {
+  printf("file:readFile() allocating buffer\n");
+  *buffer = (char*)malloc(fileSize + 1);
+  if (*buffer == NULL) {
     fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
-    exit(74);
+    return(-74);
   }
-  size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+  printf("file:readFile() reading file\n");
+  size_t bytesRead = fread(*buffer, sizeof(char), fileSize, file);
+  printf("file:readFile() read %d bytes\n", (int) bytesRead);
   if (bytesRead < fileSize) {
     fprintf(stderr, "Could not read file \"%s\".\n", path);
-    exit(74);
+    free(*buffer);
+    *buffer = NULL;
+    return(-74);
   }
-  buffer[bytesRead] = '\0';
+  printf("file:readFile() terminating buffer at %p\n", (*buffer+bytesRead));
+  (*buffer)[bytesRead] = '\0';
 
   fclose(file);
-  return buffer;
+  printf("file:readFile() file closed\n");
+  return bytesRead;
 }
 

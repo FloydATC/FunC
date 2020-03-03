@@ -1347,11 +1347,16 @@ InterpretResult includeFile(VM* vm, const char* fname) {
   // ...
 
   // At this early testing stage we require FQFN
-
-  char* source = readFile(fname);
-  InterpretResult res = interpret(vm, source);
-  printf("main:includeFile() free(%p) // source\n", (void*) source);
-  free(source);
+  InterpretResult res;
+  char* source;
+  int bytes = readFile(fname, &source);
+  if (bytes > 0) {
+    res = interpret(vm, source);
+    printf("main:includeFile() free(%p) // source\n", (void*) source);
+    free(source);
+  } else {
+    res = INTERPRET_COMPILE_ERROR;
+  }
   return res;
 }
 
@@ -1403,18 +1408,26 @@ InterpretResult preprocess(VM* vm, const char* source) {
 
 InterpretResult interpret(VM* vm, const char* source) {
   InterpretResult res;
+  printf("vm:interpret() preprocess source length=%d\n", (int) strlen(source));
   res = preprocess(vm, source); // May call interpret() recursively if #include directives are encountered
+  printf("vm:interpret() preprocess result=%d\n", res);
   if (res != INTERPRET_COMPILED) { return res; }
 
   int fileno = -1; // Temp
+  printf("vm:interpret() compile fileno=%d source length=%d\n", fileno, (int) strlen(source));
   ObjFunction* function = compile(vm, fileno, source);
+  printf("vm:interpret() compile function=%p\n", function);
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(vm, OBJ_VAL(function));
+  printf("vm:interpret() creating closure\n");
   ObjClosure* closure = newClosure(vm, function);
+  printf("vm:interpret() closure=%p\n", closure);
   pop(vm);
   push(vm, OBJ_VAL(closure));
+  printf("vm:interpret() calling closure\n");
   callValue(vm, OBJ_VAL(closure), 0);
+  printf("vm:interpret() interpret returning successfully\n");
 
   return INTERPRET_COMPILED;
   //return run();
