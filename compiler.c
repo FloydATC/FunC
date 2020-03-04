@@ -146,6 +146,7 @@ typedef enum {
 
 typedef struct Compiler {
   struct Compiler* enclosing;
+  Scanner* scanner;
   ObjFunction* function;
   FunctionType type;
 
@@ -234,7 +235,7 @@ static void advance(VM* vm) {
   vm->parser->previous = vm->parser->current;
 
   for (;;) {
-    vm->parser->current = scanToken(); // scanner
+    vm->parser->current = scanToken(vm->compiler->scanner); // scanner
     if (vm->parser->current.type != TOKEN_ERROR) break;
     errorAtCurrent(vm, vm->parser->current.start);
   }
@@ -348,11 +349,12 @@ static void patchJump(VM* vm, int offset) {
   currentChunk(vm)->code[offset + 1] = jump & 0xff;
 }
 
-static void initCompiler(VM* vm, Compiler* compiler, FunctionType type) {
+static void initCompiler(VM* vm, Compiler* compiler, Scanner* scanner, FunctionType type) {
 #ifdef DEBUG_TRACE_COMPILER
   printf("compiler:initCompiler(%p, %d)\n", compiler, type);
 #endif // DEBUG_TRACE_COMPILER
   compiler->enclosing = vm->compiler; // current;
+  compiler->scanner = scanner;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;
@@ -1247,7 +1249,7 @@ static void block(VM* vm) {
 
 static void function(VM* vm, FunctionType type) {
   Compiler compiler;
-  initCompiler(vm, &compiler, type);
+  initCompiler(vm, &compiler, vm->compiler->scanner, type);
   beginScope(vm);
 
   // Compile the parameter list.
@@ -1777,9 +1779,9 @@ static void statement(VM* vm) {
 }
 
 ObjFunction* compile(void* vm, int fileno, const char* source) {
-  initScanner(fileno, source);
+  Scanner* scanner = initScanner(vm, fileno, source);
   Compiler compiler;
-  initCompiler(vm, &compiler, TYPE_SCRIPT);
+  initCompiler(vm, &compiler, scanner, TYPE_SCRIPT);
 
   ((VM*)vm)->parser = malloc(sizeof(Parser));
   ((VM*)vm)->parser->hadError = false;

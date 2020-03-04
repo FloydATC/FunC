@@ -42,6 +42,16 @@ typedef enum {
 } TokenType;
 
 typedef struct {
+  const char* start;
+  const char* current;
+  int lineno;
+  int charno;
+  int fileno;
+  void* vm;
+  struct Scanner* parent;
+} Scanner;
+
+typedef struct {
   TokenType type;
   const char* start;
   int length;
@@ -50,7 +60,7 @@ typedef struct {
   int charno;
 } Token;
 
-void initScanner(int fileno, const char* source);
+Scanner* initScanner(void* vm, int fileno, const char* source);
 Token scanToken();
 
 #endif
