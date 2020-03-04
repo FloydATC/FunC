@@ -41,6 +41,26 @@ void destroyScanner(void* vm, Scanner* scanner) {
 
 
 
+void includeFile(Scanner* scanner, const char* filename, int length) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:includeFile() scanner=%p filename='%.*s' length=%d\n", scanner, length, filename, length);
+#endif
+
+  // If we do nothing at all, #include directives should be completely transparent
+
+}
+
+
+void endOfFile(Scanner* scanner) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:endOfFile() scanner=%p\n", scanner);
+#endif
+
+  // If we do nothing at all, #include directives should be completely transparent
+
+}
+
+
 
 static bool isAlpha(char c) {
   return (c >= 'a' && c <= 'z') ||
@@ -75,7 +95,7 @@ static bool isAtEnd(Scanner* scanner) {
 static char advance(Scanner* scanner) {
   scanner->current++;
   scanner->charno++;
-#ifdef DEBUG_TRACE_SCANNER
+#ifdef DEBUG_TRACE_SCANNER_VERBOSE
   printf("scanner:peek() scanner=%p\n", scanner);
   printf("scanner:advance() lineno=%d, charno=%d\n", scanner->lineno, scanner->charno);
 #endif // DEBUG_TRACE_SCANNER
@@ -83,7 +103,7 @@ static char advance(Scanner* scanner) {
 }
 
 static char peek(Scanner* scanner) {
-#ifdef DEBUG_TRACE_SCANNER
+#ifdef DEBUG_TRACE_SCANNER_VERBOSE
   printf("scanner:peek() scanner=%p\n", scanner);
   printf("scanner:peek() lineno=%d, charno=%d\n", scanner->lineno, scanner->charno);
 #endif // DEBUG_TRACE_SCANNER
@@ -133,27 +153,8 @@ static Token errorToken(Scanner* scanner, const char* message) {
   return token;
 }
 
-void directive(Scanner* scanner) {
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:directive()\n");
-  printf("scanner:directive() start=%p\n", scanner->start);
-  printf("scanner:directive() current=%p\n", scanner->current);
-#endif
-  advance(scanner);
-  // Get directive name
-  while (isAlpha(peek(scanner)) || isBase10Digit(peek(scanner))) advance(scanner);
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:directive() start=%p\n", scanner->start);
-  printf("scanner:directive() current=%p\n", scanner->current);
-  int length = scanner->current - scanner->start;
-  printf("scanner:directive() directive length=%d name=%.*s\n", length, length, scanner->start);
-#endif
 
 
-  while (peek(scanner) != '\n' && !isAtEnd(scanner)) {
-    advance(scanner);
-  }
-}
 
 
 static void skipWhitespace(Scanner* scanner) {
@@ -170,11 +171,6 @@ static void skipWhitespace(Scanner* scanner) {
         scanner->charno = 1;
         advance(scanner);
         break;
-      case '#': {
-        // Marks the beginning of a directive
-        directive(scanner);
-        break;
-      }
       case '/':
         if (peekNext(scanner) == '/') {
           // A comment goes until the end of the line.
@@ -199,6 +195,57 @@ static void skipWhitespace(Scanner* scanner) {
     }
   }
 }
+
+
+Token directive(Scanner* scanner) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:directive()\n");
+  printf("scanner:directive() start=%p\n", scanner->start);
+  printf("scanner:directive() current=%p\n", scanner->current);
+#endif
+  advance(scanner);
+  // Get directive name
+  while (isAlpha(peek(scanner)) || isBase10Digit(peek(scanner))) advance(scanner);
+  int directive_length = scanner->current - scanner->start;
+
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:directive() start=%p\n", scanner->start);
+  printf("scanner:directive() current=%p\n", scanner->current);
+  printf("scanner:directive() directive length=%d name=%.*s\n", directive_length, directive_length, scanner->start);
+#endif
+
+  if (strncmp("#include", scanner->start, directive_length) == 0) {
+    skipWhitespace(scanner);
+    if (peek(scanner) == '"') {
+#ifdef DEBUG_TRACE_SCANNER
+      printf("scanner:directive() found initial doublequotes, scanning filename\n");
+#endif
+      advance(scanner); // consume initial doublequotes
+      scanner->start = scanner->current;
+      while (peek(scanner) != '"' && peek(scanner) != '\n' && !isAtEnd(scanner)) advance(scanner);
+      if (peek(scanner) == '\n') return errorToken(scanner, "Unterminated string.");
+      if (isAtEnd(scanner)) return errorToken(scanner, "Unexpected end of file.");
+      int fname_length = scanner->current - scanner->start;
+      includeFile(scanner, scanner->start, fname_length);
+      advance(scanner); // consume terminating doublequotes
+      skipWhitespace(scanner);
+      scanner->start = scanner->current;
+    } else {
+      return errorToken(scanner, "Expected '\"' after #include.");
+    }
+  } else {
+    return errorToken(scanner, "Unknown directive.");
+  }
+
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:directive() done\n");
+#endif
+  // Directive was successfully processed
+  // We need to return something other than an error token; it will be discarded
+  return makeToken(scanner, TOKEN_EOF);
+}
+
+
 
 static TokenType checkKeyword(Scanner* scanner, int start, int length,
     const char* rest, TokenType type) {
@@ -354,16 +401,28 @@ Token scanToken(Scanner* scanner) {
   skipWhitespace(scanner);
   scanner->start = scanner->current;
 
-  // TODO: Check for outer scanner
-  if (isAtEnd(scanner)) return makeToken(scanner, TOKEN_EOF);
+  // Check for preprocessor directives
+  while (peek(scanner) == '#') {
+    Token result = directive(scanner); // Note: Changes state of scanner object
+    if (result.type == TOKEN_ERROR) return result;
+  }
+
+  // Check for outer scanner
+  while (isAtEnd(scanner)) {
+    if (scanner->parent == NULL) {
+      return makeToken(scanner, TOKEN_EOF); // Reached end of top level file
+    } else {
+      endOfFile(scanner); // Note: Changes state of scanner object
+    }
+  }
 
   char c = advance(scanner);
 
   if (isAlpha(c)) return identifier(scanner);
   if (isBase10Digit(c)) return number(scanner, c); // All radii start with a base 10 digit
 
+
   switch (c) {
-    //case '#': return makeToken(TOKEN_HASH);
     case '(': return makeToken(scanner, TOKEN_LEFT_PAREN);
     case ')': return makeToken(scanner, TOKEN_RIGHT_PAREN);
     case '{': return makeToken(scanner, TOKEN_LEFT_BRACE);
