@@ -23,6 +23,7 @@ Parser* initParser(void* vm, int fileno, const char* source) {
   printf("parser:initParser() initialized scanner=%p\n", parser->scanner);
 #endif
 
+  parser->vm = vm;
   parser->hadError = false;
   parser->panicMode = false;
 
