@@ -61,6 +61,8 @@ typedef struct {
 } Token;
 
 Scanner* initScanner(void* vm, int fileno, const char* source);
+void destroyScanner(void* vm, Scanner* scanner);
+
 Token scanToken();
 
 #endif

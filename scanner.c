@@ -7,19 +7,8 @@
 #include "scanner.h"
 #include "memory.h"
 
-// Moved to header file
-/*
-typedef struct {
-  const char* start;
-  const char* current;
-  int lineno;
-  int charno;
-  int fileno;
-} Scanner;
-*/
 
-//Scanner scanner;
-
+// "Constructor"
 Scanner* initScanner(void* vm, int fileno, const char* source) {
 #ifdef DEBUG_TRACE_SCANNER
   printf("scanner:initScanner(%d, %p)\n", fileno, source);
@@ -37,6 +26,21 @@ Scanner* initScanner(void* vm, int fileno, const char* source) {
 #endif
   return scanner;
 }
+
+
+// "Destructor"
+void destroyScanner(void* vm, Scanner* scanner) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:destroyScanner() vm=%p scanner=%p\n", vm, scanner);
+#endif
+  FREE(vm, Scanner, scanner);
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:destroyScanner() done\n");
+#endif
+}
+
+
+
 
 static bool isAlpha(char c) {
   return (c >= 'a' && c <= 'z') ||
@@ -61,6 +65,8 @@ static bool isBase16Digit(char c) {
          (c >= 'a' && c <= 'f') ||
          (c >= 'A' && c <= 'F');
 }
+
+
 
 static bool isAtEnd(Scanner* scanner) {
   return scanner->current[0] == '\0';
@@ -338,6 +344,7 @@ static Token string(Scanner* scanner) {
   advance(scanner);
   return makeToken(scanner, TOKEN_STRING);
 }
+
 
 Token scanToken(Scanner* scanner) {
 #ifdef DEBUG_TRACE_SCANNER

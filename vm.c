@@ -752,7 +752,7 @@ VM* initVM() {
 
   initValueArray(&vm->filenames); // Experimental include support
 
-  vm->parser = NULL;
+  //vm->parser = NULL;
   vm->compiler = NULL;
   vm->currentClass = NULL;
 

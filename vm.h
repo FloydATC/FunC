@@ -53,7 +53,7 @@ typedef struct FunVM {
 
   ValueArray filenames; // Experimental include support
 
-  struct Parser* parser;
+  //struct Parser* parser;
   struct Compiler* compiler; // current
   struct ClassCompiler* currentClass;
 
