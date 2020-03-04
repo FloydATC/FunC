@@ -14,6 +14,7 @@ Scanner* initScanner(void* vm, int fileno, const char* source) {
   printf("scanner:initScanner(%d, %p)\n", fileno, source);
 #endif
   Scanner* scanner = ALLOCATE(vm, Scanner, 1);
+  scanner->source = source;
   scanner->start = source;
   scanner->current = source;
   scanner->lineno = 1;
@@ -41,23 +42,142 @@ void destroyScanner(void* vm, Scanner* scanner) {
 
 
 
-void includeFile(Scanner* scanner, const char* filename, int length) {
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:includeFile() scanner=%p filename='%.*s' length=%d\n", scanner, length, filename, length);
-#endif
+static void copyScanner(Scanner* src, Scanner* dst) {
+  dst->fileno  = src->fileno;
+  dst->lineno  = src->lineno;
+  dst->charno  = src->charno;
+  dst->source  = src->source;
+  dst->start   = src->start;
+  dst->current = src->current;
+  dst->parent  = src->parent;
+  dst->vm      = src->vm;
+}
 
-  // If we do nothing at all, #include directives should be completely transparent
-
+static void swapScanners(Scanner* a, Scanner* b) {
+  Scanner temp;
+  copyScanner(a, &temp); // Store current scanner state
+  copyScanner(b, a);
+  copyScanner(&temp, b);
 }
 
 
+static Token makeToken(Scanner* scanner, TokenType type) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:makeToken(%d)\n", type);
+#endif // DEBUG_TRACE_SCANNER
+  Token token;
+  token.type = type;
+  token.start = scanner->start;
+  token.length = (int)(scanner->current - scanner->start);
+  token.fileno = scanner->fileno;
+  token.lineno = scanner->lineno;
+  token.charno = scanner->charno;
+
+  return token;
+}
+
+static Token errorToken(Scanner* scanner, const char* message) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:errorToken(%s)\n", message);
+#endif // DEBUG_TRACE_SCANNER
+  Token token;
+  token.type = TOKEN_ERROR;
+  token.start = message;
+  token.length = (int)strlen(message);
+  token.fileno = scanner->fileno;
+  token.lineno = scanner->lineno;
+  token.charno = scanner->charno;
+  return token;
+}
+
+
+int scannerDepth(Scanner* scanner) {
+  int depth = 0;
+  Scanner* s = scanner;
+  while (s->parent != NULL) {
+    depth++;
+    s = (Scanner*) s->parent;
+  }
+  return depth;
+}
+
+void dumpState(Scanner* scanner) {
+  printf("Internal state of scanner %p\n", scanner);
+  printf("  fileno    %d\n", scanner->fileno);
+  printf("  lineno    %d\n", scanner->lineno);
+  printf("  charno    %d\n", scanner->charno);
+  printf("  source    %p (length=%d)\n", scanner->source, (int)strlen(scanner->source));
+  printf("    {%.*s}\n", 40, scanner->source);
+  printf("  start     %p (offset=%d)\n", scanner->start, (int)(scanner->start - scanner->source));
+  printf("    {%.*s}\n", 40, scanner->start);
+  printf("  current   %p (offset=%d)\n", scanner->current, (int)(scanner->current - scanner->source));
+  printf("  parent    %p (depth=%d)\n", scanner->parent, scannerDepth(scanner));
+  printf("  vm        %p\n", scanner->vm);
+}
+
+
+// This function is called when the scanner has encountered an #include directive
+Token includeFile(Scanner* scanner, const char* filename, int length) {
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:includeFile() including filename='%.*s' length=%d, freeze parent state:\n", length, filename, length);
+  dumpState(scanner);
+#endif
+  // The filename is not zero terminated so we need a copy
+  char* filenamez = ALLOCATE(scanner->vm, char, length+1);
+  strncpy(filenamez, filename, length);
+  filenamez[length] = '\0';
+
+  // Check if file has already been included
+  int fileno = getFilenoByName(scanner->vm, filenamez);
+  if (fileno == -1) {
+    // File has not been included yet
+    fileno = addFilename(scanner->vm, filenamez);
+    char* source;
+    int source_length = readFile(filenamez, &source);
+    if (source_length < 0) return errorToken(scanner, "Error reading include file.");
+
+    // Create a new scanner object
+    Scanner* outer = initScanner(scanner->vm, fileno, source);
+
+    // Since the Parser has a pointer to the scanner object,
+    // we need to swap the internal state rather than simply use the new pointer.
+    swapScanners(scanner, outer);
+    scanner->parent = (struct Scanner*) outer;
+
+    // The scanner should happily continue scanning the new file as if nothing happened
+#ifdef DEBUG_TRACE_SCANNER
+    printf("scanner:includeFile() starting child scanner:\n");
+    dumpState(scanner);
+#endif
+  }
+  FREE(scanner->vm, char, filenamez);
+
+  // Return something other than an error, the actual token will be discarded
+  return makeToken(scanner, TOKEN_EOF);
+}
+
+
+// This function is called when the scanner reaches EOF and scanner->parent is not NULL
 void endOfFile(Scanner* scanner) {
 #ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:endOfFile() scanner=%p\n", scanner);
+  printf("scanner:endOfFile() child scanner reached EOF:\n");
+  dumpState(scanner);
 #endif
 
-  // If we do nothing at all, #include directives should be completely transparent
+  // Source code buffer was allocated by readFile() and given to us so we must free it
+  free((void*) scanner->source);
 
+  // The outer scanner is stored as scanner->parent
+  // Swap the contents back and then free the inner scanner object
+  Scanner* inner = (Scanner*) scanner->parent;
+  swapScanners(scanner, inner);
+  destroyScanner(scanner->vm, inner);
+
+  // The scanner should now resume scanning the file that contained a #include directive
+#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:endOfFile() resuming parent scanner:\n");
+  dumpState(scanner);
+#endif
 }
 
 
@@ -87,6 +207,10 @@ static bool isBase16Digit(char c) {
 }
 
 
+
+static bool isAtEol(Scanner* scanner) {
+  return scanner->current[0] == '\n' || scanner->current[0] == '\r';
+}
 
 static bool isAtEnd(Scanner* scanner) {
   return scanner->current[0] == '\0';
@@ -124,35 +248,6 @@ static bool match(Scanner* scanner, char expected) {
 }
 
 
-static Token makeToken(Scanner* scanner, TokenType type) {
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:makeToken(%d)\n", type);
-#endif // DEBUG_TRACE_SCANNER
-  Token token;
-  token.type = type;
-  token.start = scanner->start;
-  token.length = (int)(scanner->current - scanner->start);
-  token.fileno = scanner->fileno;
-  token.lineno = scanner->lineno;
-  token.charno = scanner->charno;
-
-  return token;
-}
-
-static Token errorToken(Scanner* scanner, const char* message) {
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:errorToken(%s)\n", message);
-#endif // DEBUG_TRACE_SCANNER
-  Token token;
-  token.type = TOKEN_ERROR;
-  token.start = message;
-  token.length = (int)strlen(message);
-  token.fileno = scanner->fileno;
-  token.lineno = scanner->lineno;
-  token.charno = scanner->charno;
-  return token;
-}
-
 
 
 
@@ -174,14 +269,14 @@ static void skipWhitespace(Scanner* scanner) {
       case '/':
         if (peekNext(scanner) == '/') {
           // A comment goes until the end of the line.
-          while (peek(scanner) != '\n' && !isAtEnd(scanner)) advance(scanner);
+          while (!isAtEol(scanner) && !isAtEnd(scanner)) advance(scanner);
         } else if (peekNext(scanner) == '*') {
           // A block comment goes until '*/'
           advance(scanner); // Consume the slash
           advance(scanner); // Consume the star
           // Scan for */ while ignoring everything else
           while ((peek(scanner) != '*' || peekNext(scanner) != '/') && !isAtEnd(scanner)) {
-            if (peek(scanner) == '\n') { scanner->lineno++; scanner->charno = 1; }
+            if (isAtEol(scanner)) { scanner->lineno++; scanner->charno = 1; }
             advance(scanner);
           }
           advance(scanner); // Consume the star
@@ -196,6 +291,27 @@ static void skipWhitespace(Scanner* scanner) {
   }
 }
 
+
+Token includeDirective(Scanner* scanner) {
+  skipWhitespace(scanner);
+  // Directive must be followed by a filename in doublequotes, newline is forbidden
+  if (peek(scanner) == '"') {
+    advance(scanner); // consume initial doublequotes
+    scanner->start = scanner->current;
+    while (peek(scanner) != '"' && !isAtEol(scanner) && !isAtEnd(scanner)) advance(scanner);
+    if (isAtEol(scanner)) return errorToken(scanner, "Unterminated string.");
+    if (isAtEnd(scanner)) return errorToken(scanner, "Unexpected end of file.");
+    const char* fname_begin = scanner->start;
+    int fname_length = scanner->current - scanner->start;
+    advance(scanner); // consume terminating doublequotes
+    scanner->start = scanner->current;
+    skipWhitespace(scanner);
+    scanner->start = scanner->current;
+    return includeFile(scanner, fname_begin, fname_length);
+  } else {
+    return errorToken(scanner, "Expected '\"' after #include.");
+  }
+}
 
 Token directive(Scanner* scanner) {
 #ifdef DEBUG_TRACE_SCANNER
@@ -215,34 +331,10 @@ Token directive(Scanner* scanner) {
 #endif
 
   if (strncmp("#include", scanner->start, directive_length) == 0) {
-    skipWhitespace(scanner);
-    if (peek(scanner) == '"') {
-#ifdef DEBUG_TRACE_SCANNER
-      printf("scanner:directive() found initial doublequotes, scanning filename\n");
-#endif
-      advance(scanner); // consume initial doublequotes
-      scanner->start = scanner->current;
-      while (peek(scanner) != '"' && peek(scanner) != '\n' && !isAtEnd(scanner)) advance(scanner);
-      if (peek(scanner) == '\n') return errorToken(scanner, "Unterminated string.");
-      if (isAtEnd(scanner)) return errorToken(scanner, "Unexpected end of file.");
-      int fname_length = scanner->current - scanner->start;
-      includeFile(scanner, scanner->start, fname_length);
-      advance(scanner); // consume terminating doublequotes
-      skipWhitespace(scanner);
-      scanner->start = scanner->current;
-    } else {
-      return errorToken(scanner, "Expected '\"' after #include.");
-    }
-  } else {
-    return errorToken(scanner, "Unknown directive.");
+    return includeDirective(scanner);
   }
 
-#ifdef DEBUG_TRACE_SCANNER
-  printf("scanner:directive() done\n");
-#endif
-  // Directive was successfully processed
-  // We need to return something other than an error token; it will be discarded
-  return makeToken(scanner, TOKEN_EOF);
+  return errorToken(scanner, "Unknown directive.");
 }
 
 
@@ -367,7 +459,7 @@ static Token number(Scanner* scanner, char current) {
 
 static Token string(Scanner* scanner) {
   while (peek(scanner) != '"' && !isAtEnd(scanner)) {
-    if (peek(scanner) == '\n') { scanner->lineno++; scanner->charno = 1; }
+    if (isAtEol(scanner)) { scanner->lineno++; scanner->charno = 1; }
     if (peek(scanner) == '\\' && peekNext(scanner) == '\\') {
       // Double backslashes will be interpreted as a single backslash later
       // Skip them so they don't interfere with the next test
@@ -393,6 +485,29 @@ static Token string(Scanner* scanner) {
 }
 
 
+bool handleEof(Scanner* scanner) {
+  if (isAtEnd(scanner)) {
+#ifdef DEBUG_TRACE_SCANNER
+    printf("scanner:scanToken() scanner=%p reached EOF\n", scanner);
+    dumpState(scanner);
+#endif
+    if (scanner->parent == NULL) {
+#ifdef DEBUG_TRACE_SCANNER
+      printf("scanner:scanToken() scanner=%p reached EOF of top level file\n", scanner);
+#endif
+      return true;
+    } else {
+#ifdef DEBUG_TRACE_SCANNER
+      printf("scanner:scanToken() scanner=%p reached EOF of included file\n", scanner);
+#endif
+      endOfFile(scanner); // Note: scanner->parent gets copied to scanner object
+      skipWhitespace(scanner);
+      scanner->start = scanner->current;
+    }
+  }
+  return false;
+}
+
 Token scanToken(Scanner* scanner) {
 #ifdef DEBUG_TRACE_SCANNER
   printf("scanner:scanToken() scanner=%p\n", scanner);
@@ -401,18 +516,14 @@ Token scanToken(Scanner* scanner) {
   skipWhitespace(scanner);
   scanner->start = scanner->current;
 
-  // Check for preprocessor directives
-  while (peek(scanner) == '#') {
-    Token result = directive(scanner); // Note: Changes state of scanner object
-    if (result.type == TOKEN_ERROR) return result;
-  }
-
-  // Check for outer scanner
-  while (isAtEnd(scanner)) {
-    if (scanner->parent == NULL) {
-      return makeToken(scanner, TOKEN_EOF); // Reached end of top level file
-    } else {
-      endOfFile(scanner); // Note: Changes state of scanner object
+  // Checking for preprocessor directives and EOF is closely tied together
+  while (isAtEnd(scanner) || peek(scanner) == '#') {
+    if (handleEof(scanner)) return makeToken(scanner, TOKEN_EOF);
+    if (peek(scanner) == '#') {
+      Token result = directive(scanner); // Note: Changes state of scanner object
+      if (result.type == TOKEN_ERROR) return result;
+      skipWhitespace(scanner);
+      scanner->start = scanner->current;
     }
   }
 
@@ -489,5 +600,8 @@ Token scanToken(Scanner* scanner) {
     case '"': return string(scanner);
   }
 
+//#ifdef DEBUG_TRACE_SCANNER
+  printf("scanner:scanToken() scanner=%p character=%d '%c'\n", scanner, c, c);
+//#endif
   return errorToken(scanner, "Unexpected character.");
 }

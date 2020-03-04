@@ -41,7 +41,9 @@ typedef enum {
   TOKEN_EOF
 } TokenType;
 
+// Don't forget to update scanner:copyScanner()
 typedef struct {
+  const char* source;
   const char* start;
   const char* current;
   int lineno;
