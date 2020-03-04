@@ -6,6 +6,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "error.h"
+#include "file.h"
 #include "memory.h"
 #include "number.h"
 #include "scanner.h"
@@ -190,7 +191,8 @@ static void errorAt(VM* vm, Token* token, const char* message) {
   //printf("compiler:errorAt() vm=%p token=%p message=%s\n", vm, token, message);
   //printf("compiler:errorAt() token fileno=%d lineno=%d charno=%d\n", token->fileno, token->lineno, token->charno);
   //printf("compiler:errorAt() call #1\n");
-  msgbuf = bprintf(msgbuf, "%d[%d:%d] Error", token->fileno, token->lineno, token->charno);
+  char* filename = AS_CSTRING(getFilenameByNo(vm, token->fileno));
+  msgbuf = bprintf(msgbuf, "%s[%d:%d] Error", filename, token->lineno, token->charno);
 
 
   if (token->type == TOKEN_EOF) {

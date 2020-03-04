@@ -54,14 +54,15 @@ void runtimeError(VM* vm, const char* format, ...) {
     // -1 because the IP is sitting on the next instruction to be
     // executed.
     size_t ip = frame->ip - function->chunk.code - 1;
-    //int fileno = function->chunk.files[ip];
+    int fileno = function->chunk.files[ip];
+    char* filename = AS_CSTRING(getFilenameByNo(vm, fileno));
     int lineno = function->chunk.lines[ip];
     int charno = function->chunk.chars[ip];
     if (function->name == NULL) {
-      msgbuf = bprintf(msgbuf, "at %d:%d\n", lineno, charno);
+      msgbuf = bprintf(msgbuf, "at %s[%d:%d]\n", filename, lineno, charno);
     } else {
       char* fn = function->name->chars;
-      msgbuf = bprintf(msgbuf, "%s at %d:%d\n", fn, lineno, charno);
+      msgbuf = bprintf(msgbuf, "%s at %s[%d:%d]\n", fn, filename, lineno, charno);
     }
 
   }
@@ -263,6 +264,7 @@ void defineNative(VM* vm, const char* name, NativeFn function) {
 }
 
 void freeVM(VM* vm) {
+  freeValueArray(vm, &vm->filenames);
   //printf("vm.freeVM(%p) freeing globals\n", (void*)vm);
   freeTable(vm, &vm->globals);
   //printf("vm.freeVM(%p) freeing strings\n", (void*)vm);
@@ -747,6 +749,8 @@ VM* initVM() {
 
   initTable(&vm->globals);
   initTable(&vm->strings);
+
+  initValueArray(&vm->filenames); // Experimental include support
 
   vm->parser = NULL;
   vm->compiler = NULL;
@@ -1341,8 +1345,9 @@ InterpretResult run(VM* vm) {
 
 
 
-static ObjFunction* interpret_inner(VM* vm, const char* source) {
-  int fileno = -1; // Temp
+static ObjFunction* interpret_inner(VM* vm, const char* source, const char* filename) {
+  int fileno = -1;
+  if (strlen(filename) > 0) fileno = addFilename(vm, filename);
   return compile(vm, fileno, source);
 }
 
@@ -1356,10 +1361,10 @@ static void setup_initial_callframe(VM* vm, ObjFunction* function) {
   return;
 }
 
-InterpretResult interpret(VM* vm, const char* source) {
-  ObjFunction* function = interpret_inner(vm, source);
+InterpretResult interpret(VM* vm, const char* source, const char* filename) {
+  ObjFunction* function = interpret_inner(vm, source, filename);
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
-  printf("====== compilation complete ======\n");
+  //printf("====== compilation complete ======\n");
   setup_initial_callframe(vm, function);
   return INTERPRET_COMPILED;
 }

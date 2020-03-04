@@ -4,7 +4,8 @@
 #include <unistd.h>
 
 #include "file.h"
-
+#include "vm.h"
+#include "memory.h"
 
 int readFile(const char* path, char** buffer) {
   printf("file:readFile() path=%s\n", path);
@@ -46,4 +47,46 @@ int readFile(const char* path, char** buffer) {
   printf("file:readFile() file closed\n");
   return bytesRead;
 }
+
+
+// Experimental include support
+
+int addFilename(void* vm, const char* filename) {
+  // If file already exists, return existing index
+  int fileno = getFilenoByName(vm, filename);
+  if (fileno != -1) return fileno;
+
+  // Internalize filename
+  Value fname = OBJ_VAL(copyString(vm, filename, strlen(filename)));
+
+  // Add the value to array
+  push(vm, fname);
+  writeValueArray(vm, &((VM*)vm)->filenames, fname);
+  pop(vm);
+
+  // Return the index
+  return ((VM*)vm)->filenames.count - 1;
+}
+
+// This function is typically used to check of the file has already been included
+// Return -1 if the filename is not found in vm->filenames
+// Otherwise return the index
+int getFilenoByName(void* vm, const char* filename) {
+  // Internalize filename
+  Value fname = OBJ_VAL(copyString(vm, filename, strlen(filename)));
+
+  // Scan ValueArray and check for equality
+  for (int i=0; i<((VM*)vm)->filenames.count; i++) {
+    if (valuesEqual( ((VM*)vm)->filenames.values[i], fname )) return i;
+  }
+  return -1; // Not found
+}
+
+// Given a fileno, return the filename as a Value
+Value getFilenameByNo(void* vm, int id) {
+  if (id < 0) return OBJ_VAL(copyString(vm, "script", 6)); // -1 = top level script
+  if (id > ((VM*)vm)->filenames.count - 1) return OBJ_VAL(copyString(vm, "unknown", 7)); // invalid id
+  return ((VM*)vm)->filenames.values[id];
+}
+
 

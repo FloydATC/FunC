@@ -51,6 +51,8 @@ typedef struct FunVM {
 
   Obj* objects;  // Code chunks. Variables. Constants.
 
+  ValueArray filenames; // Experimental include support
+
   struct Parser* parser;
   struct Compiler* compiler; // current
   struct ClassCompiler* currentClass;
@@ -81,7 +83,7 @@ void set_error_callback(VM* vm, ErrorCb ptr);
 void runtimeError(VM* vm, const char* format, ...);
 InterpretResult run(VM* vm);
 
-InterpretResult interpret(VM* vm, const char* source);
+InterpretResult interpret(VM* vm, const char* source, const char* filename);
 void push(VM* vm, Value value);
 Value pop(VM* vm);
 void makeArray(VM* vm, uint8_t length);

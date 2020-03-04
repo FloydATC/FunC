@@ -315,6 +315,12 @@ static void markRoots(VM* vm) {
 #endif
   markTable(vm, &vm->globals);
 
+  // Scan filename array -- Experimental include support
+#ifdef DEBUG_LOG_GC_EXTREME
+  printf("memory:markRoots(vm=%p) scan filenames\n", vm);
+#endif
+  markArray(vm, &vm->filenames);
+
   // Scan objects in use at compile time
 #ifdef DEBUG_LOG_GC_EXTREME
   printf("memory:markRoots(vm=%p) scan compiler\n", vm);
