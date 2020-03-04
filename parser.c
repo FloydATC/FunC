@@ -48,6 +48,18 @@ void destroyParser(void* vm, Parser* parser) {
 
 
 
+#ifdef DEBUG_TRACE_PARSER_VERBOSE
+void printInterestingTokens(Token token) {
+  switch (token.type) {
+    case TOKEN_EOF:         printf("TOKEN_EOF\n"); break;
+    case TOKEN_ERROR:       printf("TOKEN_ERROR\n"); break;
+    case TOKEN_FUN:         printf("TOKEN_FUN\n"); break;
+    case TOKEN_RETURN:      printf("TOKEN_RETURN\n"); break;
+    case TOKEN_IDENTIFIER:  printf("TOKEN_IDENTIFIER\n"); break;
+    default:            break;
+  }
+}
+#endif
 
 static void errorAt(Parser* parser, Token* token, const char* message) {
   if (parser->panicMode) return;
@@ -85,20 +97,23 @@ void errorAtCurrent(Parser* parser, const char* message) {
 
 
 void advance(Parser* parser) {
-#ifdef DEBUG_TRACE_COMPILER
+#ifdef DEBUG_TRACE_PARSER
   printf("parser:advance() parser=%p\n", parser);
 #endif
   parser->previous = parser->current;
 
   for (;;) {
     parser->current = scanToken(parser->scanner); // scanner
+#ifdef DEBUG_TRACE_PARSER_VERBOSE
+    printInterestingTokens(parser->current);
+#endif
     if (parser->current.type != TOKEN_ERROR) break;
     errorAtCurrent(parser, parser->current.start);
   }
 }
 
 void consume(Parser* parser, TokenType type, const char* message) {
-#ifdef DEBUG_TRACE_COMPILER
+#ifdef DEBUG_TRACE_PARSER
   printf("parser:consume() parser=%p\n", parser);
 #endif
   if (parser->current.type == type) {
