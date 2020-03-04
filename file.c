@@ -8,10 +8,10 @@
 #include "memory.h"
 
 int readFile(const char* path, char** buffer) {
-  printf("file:readFile() path=%s\n", path);
+  printf("file:readFile() path='%s'\n", path);
   FILE* file = fopen(path, "rb");
   if (file == NULL) {
-    fprintf(stderr, "Could not open file \"%s\".\n", path);
+    fprintf(stderr, "Could not open file '%s'.\n", path);
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
       printf("Current working dir: %s\n", cwd);
@@ -28,14 +28,14 @@ int readFile(const char* path, char** buffer) {
   printf("file:readFile() allocating buffer\n");
   *buffer = (char*)malloc(fileSize + 1);
   if (*buffer == NULL) {
-    fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
+    fprintf(stderr, "Not enough memory to read '%s'.\n", path);
     return(-74);
   }
   printf("file:readFile() reading file\n");
   size_t bytesRead = fread(*buffer, sizeof(char), fileSize, file);
   printf("file:readFile() read %d bytes\n", (int) bytesRead);
   if (bytesRead < fileSize) {
-    fprintf(stderr, "Could not read file \"%s\".\n", path);
+    fprintf(stderr, "Could not read file '%s'.\n", path);
     free(*buffer);
     *buffer = NULL;
     return(-74);
