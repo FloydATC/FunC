@@ -7,8 +7,12 @@
 #include "vm.h"
 #include "memory.h"
 
+
+
 int readFile(const char* path, char** buffer) {
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() path='%s'\n", path);
+#endif
   FILE* file = fopen(path, "rb");
   if (file == NULL) {
     fprintf(stderr, "Could not open file '%s'.\n", path);
@@ -18,33 +22,47 @@ int readFile(const char* path, char** buffer) {
     }
     return(-74);
   }
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() open successful, seek to end\n");
+#endif
 
   fseek(file, 0L, SEEK_END);
   size_t fileSize = ftell(file);
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() file size is %d bytes, rewinding\n", (int)fileSize);
+#endif
   rewind(file);
 
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() allocating buffer\n");
+#endif
   *buffer = (char*)malloc(fileSize + 1);
   if (*buffer == NULL) {
     fprintf(stderr, "Not enough memory to read '%s'.\n", path);
     return(-74);
   }
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() reading file\n");
+#endif
   size_t bytesRead = fread(*buffer, sizeof(char), fileSize, file);
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() read %d bytes\n", (int) bytesRead);
+#endif
   if (bytesRead < fileSize) {
     fprintf(stderr, "Could not read file '%s'.\n", path);
     free(*buffer);
     *buffer = NULL;
     return(-74);
   }
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() terminating buffer at %p\n", (*buffer+bytesRead));
+#endif
   (*buffer)[bytesRead] = '\0';
 
   fclose(file);
+#ifdef DEBUG_TRACE_FILE
   printf("file:readFile() file closed\n");
+#endif
   return bytesRead;
 }
 
