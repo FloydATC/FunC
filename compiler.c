@@ -5,12 +5,12 @@
 
 #include "common.h"
 #include "compiler.h"
-#include "error.h"
-#include "file.h"
+//#include "error.h"
+//#include "file.h"
 #include "memory.h"
 #include "number.h"
 #include "parser.h"
-#include "scanner.h"
+//#include "scanner.h"
 #include "object.h"
 #include "vm.h"
 
@@ -603,7 +603,6 @@ static void dot(VM* vm, bool canAssign) {
     // Optimized invocation of bound method calls - chapter 28.5
     // .method is followed by () = call that method instead of loading it on the stack
     // This is the most common way to use a method, but not the ONLY way
-    // BUT! I think this will break my hard-coded built-in methods.
     uint8_t argCount = argumentList(vm);
     //emitBytes(OP_INVOKE, name);
     emitByte(vm, OP_INVOKE);
