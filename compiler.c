@@ -1329,8 +1329,10 @@ static void continueStatement(VM* vm) {
 }
 
 static void exitStatement(VM* vm) {
+  //printf("compiler:exitStatement() begin\n");
   emitByte(vm, OP_EXIT);
-  //consume(vm->compiler->parser, TOKEN_SEMICOLON, "Expect ';' after exit.");
+  consume(vm->compiler->parser, TOKEN_SEMICOLON, "Expect ';' after exit.");
+  //printf("compiler:exitStatement() done\n");
 }
 
 
