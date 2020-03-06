@@ -13,6 +13,7 @@ typedef void unused; // Silence warnings about unused variables with "(unused) v
 //#define DEBUG_TRACE_SCANNER
 //#define DEBUG_TRACE_SCANNER_VERBOSE
 //#define DEBUG_TRACE_PARSER
+//#define DEBUG_TRACE_PARSER_VERBOSE
 //#define DEBUG_TRACE_COMPILER
 //#define DEBUG_TRACE_CHUNK
 //#define DEBUG_TRACE_VALUES
