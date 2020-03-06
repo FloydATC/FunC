@@ -1300,6 +1300,11 @@ InterpretResult run(VM* vm) {
         pop(vm);
         break;
       }
+      case OP_EXIT: {
+        vm->stackTop = 0;
+        vm->frameCount = 0;
+        return INTERPRET_OK;
+      }
       case OP_RETURN: {
         Value result = pop(vm);
 

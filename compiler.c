@@ -1129,6 +1129,7 @@ ParseRule rules[] = {
   { literal,  NULL,    PREC_NONE },       // TOKEN_TRUE
   { NULL,     NULL,    PREC_NONE },       // TOKEN_VAR
   { NULL,     NULL,    PREC_NONE },       // TOKEN_WHILE
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_EXIT
                                           // Internal.
   { NULL,     NULL,    PREC_NONE },       // TOKEN_ERROR
   { NULL,     NULL,    PREC_NONE },       // TOKEN_EOF
@@ -1326,6 +1327,12 @@ static void continueStatement(VM* vm) {
   // Jump to top of current innermost loop.
   emitLoop(vm, innermostLoopStart);
 }
+
+static void exitStatement(VM* vm) {
+  emitByte(vm, OP_EXIT);
+  //consume(vm->compiler->parser, TOKEN_SEMICOLON, "Expect ';' after exit.");
+}
+
 
 static void expressionStatement(VM* vm) {
   expression(vm);
@@ -1687,6 +1694,8 @@ static void statement(VM* vm) {
     breakStatement(vm);
   } else if (match(vm->compiler->parser, TOKEN_CONTINUE)) {
     continueStatement(vm);
+  } else if (match(vm->compiler->parser, TOKEN_EXIT)) {
+    exitStatement(vm);
   } else if (match(vm->compiler->parser, TOKEN_FOR)) {
     forStatement(vm);
   } else if (match(vm->compiler->parser, TOKEN_IF)) {

@@ -375,7 +375,13 @@ static TokenType identifierType(Scanner* scanner)
             }
         }
       }
-    case 'e': return checkKeyword(scanner, 1, 3, "lse", TOKEN_ELSE);
+    case 'e':
+      if (scanner->current - scanner->start > 1) {
+        switch (scanner->start[1]) {
+          case 'l': return checkKeyword(scanner, 2, 2, "se", TOKEN_ELSE);
+          case 'x': return checkKeyword(scanner, 2, 2, "it", TOKEN_EXIT);
+        }
+      }
     case 'f':
       if (scanner->current - scanner->start > 1) {
         switch (scanner->start[1]) {

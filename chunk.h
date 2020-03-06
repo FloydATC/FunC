@@ -60,6 +60,7 @@ typedef enum {
   OP_CLOSURE,       // a closure thing. (tbd if/when I get it.)
   OP_CLOSE_UPVALUE, // another, even stranger closure thing
   OP_RETURN,        //
+  OP_EXIT,          // reset stack, break execution
   OP_CLASS,         //
   OP_METHOD,        //
 } OpCode;

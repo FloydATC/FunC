@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "parser.h"
 
@@ -14,13 +15,13 @@
 // "Constructor"
 Parser* initParser(void* vm, int fileno, const char* source) {
 #ifdef DEBUG_TRACE_PARSER
-  printf("parser:initParser() vm=%p scanner=%p\n", vm, scanner);
+  printf("parser:initParser() vm=%p fileno=%d source=%p (%d bytes)\n", vm, fileno, source, (int)strlen(source));
 #endif
   Parser* parser = ALLOCATE(vm, Parser, 1);
 
   parser->scanner = initScanner(vm, fileno, source);
 #ifdef DEBUG_TRACE_PARSER
-  printf("parser:initParser() initialized scanner=%p\n", parser->scanner);
+  printf("parser:initParser() initialized parser=%p\n", parser);
 #endif
 
   parser->vm = vm;
@@ -53,9 +54,10 @@ void printInterestingTokens(Token token) {
   switch (token.type) {
     case TOKEN_EOF:         printf("TOKEN_EOF\n"); break;
     case TOKEN_ERROR:       printf("TOKEN_ERROR\n"); break;
+    case TOKEN_EXIT:        printf("TOKEN_EXIT\n"); break;
     case TOKEN_FUN:         printf("TOKEN_FUN\n"); break;
     case TOKEN_RETURN:      printf("TOKEN_RETURN\n"); break;
-    case TOKEN_IDENTIFIER:  printf("TOKEN_IDENTIFIER\n"); break;
+    case TOKEN_IDENTIFIER:  printf("TOKEN_IDENTIFIER=%.*s\n", token.length, token.start); break;
     default:            break;
   }
 }
