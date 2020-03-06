@@ -1301,7 +1301,7 @@ InterpretResult run(VM* vm) {
         break;
       }
       case OP_EXIT: {
-        vm->stackTop = 0;
+        vm->stackTop = vm->stack;
         vm->frameCount = 0;
         return INTERPRET_OK;
       }
