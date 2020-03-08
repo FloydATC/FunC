@@ -103,6 +103,9 @@ Value to_nativeValue(VM* vm, const char* name, NativeFn function) {
 
 // API function: return a "native" object instance populated with fields
 Value to_instanceValue(VM* vm, const char** fields, Value* values, int length) {
+  // Make sure the values are safe from GC
+  for (int i=0; i<length; i++) push(vm, values[i]);
+
   //printf("vm:to_instanceValue() constructing instance with %d member values\n", length);
   // First we create an empty "native" class using a name that users can't refer to
   ObjString* klassname = copyString(vm, "*", 1);
@@ -123,6 +126,10 @@ Value to_instanceValue(VM* vm, const char** fields, Value* values, int length) {
   pop(vm); // instance
   pop(vm); // klass
   pop(vm); // klassname
+
+  // The values are now safe from GC
+  for (int i=0; i<length; i++) pop(vm);
+
   return OBJ_VAL(instance);
 }
 
