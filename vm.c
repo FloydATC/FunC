@@ -84,6 +84,10 @@ void runtimeError(VM* vm, const char* format, ...) {
 
 // Helper functions for the API
 
+Value nullValue() {
+  return NULL_VAL;
+}
+
 Value to_numberValue(double n) {
   return NUMBER_VAL(n);
 }

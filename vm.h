@@ -64,6 +64,7 @@ typedef struct FunVM {
 
 
 // API functions
+Value nullValue();
 Value to_numberValue(double n);
 Value to_stringValue(VM* vm, const char* cstr);
 Value to_stringValueArray(VM* vm, const char** cstr, int array_length);
