@@ -97,7 +97,17 @@ Value to_nativeValue(VM* vm, const char* name, NativeFn function) {
   ObjString* name_obj = copyString(vm, name, (int)strlen(name));
   push(vm, OBJ_VAL(name_obj));
   Value native = OBJ_VAL(newNative(vm, name_obj, function));
+  push(vm, native);
+  // We must store this somewhere safe before returning
+  size_t taglen = 1 + strlen(name); // +1 for prefix "*"
+  char* tagname = ALLOCATE(vm, char, taglen + 1); // +1 for terminator
+  tagname[0] = '*';
+  strncpy(tagname+1, name, strlen(name));
+  tagname[taglen] = '\0';
+  defineGlobal(vm, tagname, native); // "*name" = native
+  pop(vm); // native
   pop(vm); // name_obj
+  FREE(vm, char, tagname);
   return native;
 }
 
