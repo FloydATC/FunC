@@ -29,6 +29,7 @@ typedef enum {
   OP_SET_UPVALUE,   // a closure thing. (comment tbd if/when I get it.)
   OP_GET_PROPERTY,  // get property of class instance
   OP_SET_PROPERTY,  // set property (field) of class instance
+  OP_GET_SUPER,     //
   OP_EQUAL,         // pop b, pop a, push bool(a==b)
   OP_NEQUAL,        // pop b, pop a, push bool(a!=b)
   OP_GREATER,       // pop b, pop a, push bool(a>b)
@@ -62,6 +63,7 @@ typedef enum {
   OP_RETURN,        //
   OP_EXIT,          // reset stack, break execution
   OP_CLASS,         //
+  OP_INHERIT,       //
   OP_METHOD,        //
 } OpCode;
 

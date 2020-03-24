@@ -167,6 +167,7 @@ typedef struct Compiler {
 typedef struct ClassCompiler {
   struct ClassCompiler* enclosing; // Lexical enclosure, not inheritance
   Token name;
+  bool hasSuperclass;
 } ClassCompiler;
 
 // Parser parser; // moved to parser.h
@@ -1003,6 +1004,32 @@ static void variable(VM* vm, bool canAssign) {
 }
 
 
+static Token syntheticToken(const char* text) {
+  Token token;
+  token.start = text;
+  token.length = (int)strlen(text);
+  // FIXME: Definitely not best practice to leave the remaining fields uninitialized
+  return token;
+}
+
+
+static void super_(VM* vm, bool canAssign) {
+  if (vm->currentClass == NULL) {
+    error(vm->compiler->parser, "Cannot use 'super' outside of a class.");
+  } else if (!vm->currentClass->hasSuperclass) {
+    error(vm->compiler->parser, "Cannot use 'super' in a class with no superclass.");
+  }
+  consume(vm->compiler->parser, TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(vm->compiler->parser, TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint16_t name = identifierConstant(vm, &vm->compiler->parser->previous);
+
+  namedVariable(vm, syntheticToken("this"), false);
+  namedVariable(vm, syntheticToken("super"), false);
+  emitByte(vm, OP_GET_SUPER);
+  emitWord(vm, name);
+}
+
+
 static void this_(VM* vm, bool canAssign) {
   (unused)canAssign;
   if (vm->currentClass == NULL) {
@@ -1123,7 +1150,7 @@ ParseRule rules[] = {
   { NULL,     or_,     PREC_OR },         // TOKEN_OR
   { NULL,     NULL,    PREC_NONE },       // TOKEN_PRINT
   { NULL,     NULL,    PREC_NONE },       // TOKEN_RETURN
-  { NULL,     NULL,    PREC_NONE },       // TOKEN_SUPER
+  { super_,   NULL,    PREC_NONE },       // TOKEN_SUPER
   { NULL,     NULL,    PREC_NONE },       // TOKEN_SWITCH
   { this_,    NULL,    PREC_NONE },       // TOKEN_THIS
   { literal,  NULL,    PREC_NONE },       // TOKEN_TRUE
@@ -1253,8 +1280,27 @@ static void classDeclaration(VM* vm) {
   //classCompiler.enclosing = currentClass;
   //currentClass = &classCompiler;
   classCompiler.name = vm->compiler->parser->previous; // name is a Token
+  classCompiler.hasSuperclass = false;
   classCompiler.enclosing = vm->currentClass;
   vm->currentClass = &classCompiler;
+
+  // : Superclass
+  if (match(vm->compiler->parser, TOKEN_COLON)) {
+    consume(vm->compiler->parser, TOKEN_IDENTIFIER, "Expect superclass name.");
+    variable(vm, false); // Look up superclass by name, push it on the stack
+
+    if (identifiersEqual(&className, &vm->compiler->parser->previous)) {
+      error(vm->compiler->parser, "A class cannot inherit from itself.");
+    }
+
+    beginScope(vm);
+    addLocal(vm, syntheticToken("super"));
+    defineVariable(vm, 0);
+
+    namedVariable(vm, *className, false); // Load this class onto the stack
+    emitByte(vm, OP_INHERIT);
+    classCompiler.hasSuperclass = true;
+  }
 
   namedVariable(vm, *className, false); // Put the class name on the stack
   consume(vm->compiler->parser, TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -1265,6 +1311,10 @@ static void classDeclaration(VM* vm) {
   }
   consume(vm->compiler->parser, TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   emitByte(vm, OP_POP); // We no longer need the class name
+
+  if (classCompiler.hasSuperclass) {
+    endScope(vm);
+  }
   //currentClass = currentClass->enclosing;
   vm->currentClass = vm->currentClass->enclosing; // Nor its compiler struct
 }

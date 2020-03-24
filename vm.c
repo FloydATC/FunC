@@ -1235,6 +1235,14 @@ InterpretResult run(VM* vm) {
         push(vm, value);
         break;
       }
+      case OP_GET_SUPER: {
+        ObjString* name = READ_STRING();
+        ObjClass* superclass = AS_CLASS(pop(vm));
+        if (!bindMethod(vm, superclass, name)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
+      }
       case OP_EQUAL:      CALL_OP(op_equal); break;
       case OP_NEQUAL:     CALL_OP(op_nequal); break;
       case OP_GREATER:    CALL_OP(op_greater); break;
@@ -1346,6 +1354,17 @@ InterpretResult run(VM* vm) {
       case OP_CLASS:
         push(vm, OBJ_VAL(newClass(vm, READ_STRING())));
         break;
+      case OP_INHERIT: {
+        Value superclass = peek(vm, 1);
+        if (!IS_CLASS(superclass)) {
+          runtimeError(vm, "Superclass must be a class.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjClass* subclass = AS_CLASS(peek(vm, 0));
+        tableAddAll(vm, &AS_CLASS(superclass)->methods, &subclass->methods);
+        pop(vm); // Subclass
+        break;
+      }
       case OP_METHOD:
         defineMethod(vm, READ_STRING());
         break;
