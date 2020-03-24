@@ -1266,7 +1266,7 @@ static void method(VM* vm) {
 static void classDeclaration(VM* vm) {
   consume(vm->compiler->parser, TOKEN_IDENTIFIER, "Expect class name.");
 //  uint8_t nameConstant = identifierConstant(vm, &vm->compiler->parser->previous);
-  Token* className = &vm->compiler->parser->previous; // Note the name
+  Token className = vm->compiler->parser->previous; // Note the name
   uint16_t nameConstant = identifierConstant(vm, &vm->compiler->parser->previous);
   declareVariable(vm);
 
@@ -1297,12 +1297,12 @@ static void classDeclaration(VM* vm) {
     addLocal(vm, syntheticToken("super"));
     defineVariable(vm, 0);
 
-    namedVariable(vm, *className, false); // Load this class onto the stack
+    namedVariable(vm, className, false); // Load this class onto the stack
     emitByte(vm, OP_INHERIT);
     classCompiler.hasSuperclass = true;
   }
 
-  namedVariable(vm, *className, false); // Put the class name on the stack
+  namedVariable(vm, className, false); // Put the class name on the stack
   consume(vm->compiler->parser, TOKEN_LEFT_BRACE, "Expect '{' before class body.");
   while (!check(vm->compiler->parser, TOKEN_RIGHT_BRACE) && !check(vm->compiler->parser, TOKEN_EOF)) {
     // We don't have field declarations so anything here must be a method
