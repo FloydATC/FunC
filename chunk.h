@@ -58,6 +58,7 @@ typedef enum {
   OP_LOOP,          // pop hi, pop lo, ip -= (hi<<8)|lo
   OP_CALL,          // call a function. (sounds easy. isn't.)
   OP_INVOKE,        // look up a method and call it (optimization from ch.28.5)
+  OP_SUPER_INVOKE,  //
   OP_CLOSURE,       // a closure thing. (tbd if/when I get it.)
   OP_CLOSE_UPVALUE, // another, even stranger closure thing
   OP_RETURN,        //

@@ -1024,9 +1024,22 @@ static void super_(VM* vm, bool canAssign) {
   uint16_t name = identifierConstant(vm, &vm->compiler->parser->previous);
 
   namedVariable(vm, syntheticToken("this"), false);
-  namedVariable(vm, syntheticToken("super"), false);
-  emitByte(vm, OP_GET_SUPER);
-  emitWord(vm, name);
+
+  //namedVariable(vm, syntheticToken("super"), false);
+  //emitByte(vm, OP_GET_SUPER);
+  //emitWord(vm, name);
+
+  if (match(vm->compiler->parser, TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList(vm);
+    namedVariable(vm, syntheticToken("super"), false);
+    emitByte(vm, OP_SUPER_INVOKE);
+    emitWord(vm, name);
+    emitByte(vm, argCount);
+  } else {
+    namedVariable(vm, syntheticToken("super"), false);
+    emitByte(vm, OP_GET_SUPER);
+    emitWord(vm, name);
+  }
 }
 
 
