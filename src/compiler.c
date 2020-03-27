@@ -1014,6 +1014,7 @@ static Token syntheticToken(const char* text) {
 
 
 static void super_(VM* vm, bool canAssign) {
+  (unused)canAssign;
   if (vm->currentClass == NULL) {
     error(vm->compiler->parser, "Cannot use 'super' outside of a class.");
   } else if (!vm->currentClass->hasSuperclass) {
