@@ -46,7 +46,7 @@
 // If substr is empty, return -1
 int count_substr(const char* string, const char* substr) {
   int count = 0;
-  int sublen = strlen(substr);
+  size_t sublen = strlen(substr);
   if (sublen == 0) return -1;
   char* pos = (char*) string;
   for (;;) {
@@ -64,7 +64,7 @@ int count_substr(const char* string, const char* substr) {
 // This is analogous to .indexOf found in many scripting languages
 int substr_offset(const char* string, const char* substr) {
   char* ptr = strstr(string, substr);
-  return (ptr != NULL ? ptr - string : -1);
+  return (int)(ptr != NULL ? ptr - string : -1);
 }
 
 
@@ -73,7 +73,7 @@ int substr_offset(const char* string, const char* substr) {
 ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_parts) {
   ObjArray* res = newArrayZeroed(vm, want_parts);
   int element_length;
-  int delim_length = strlen(delim);
+  int delim_length = (int)strlen(delim);
   int offset = 0;
   for (int i=0; i<want_parts; i++) {
     if (i < want_parts-1) {
@@ -84,7 +84,7 @@ ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_p
       offset += delim_length;
     } else {
       // Last element, consume the rest of the input string
-      res->values[i] = OBJ_VAL(copyString(vm, string+offset, strlen(string+i)));
+      res->values[i] = OBJ_VAL(copyString(vm, string+offset, (int)strlen(string+i)));
     }
     //printf("objstring:split_string() i=%d element='%s'\n", i, AS_CSTRING(res->values[i]));
   }
@@ -93,7 +93,7 @@ ObjArray* split_string(VM* vm, const char* string, const char* delim, int want_p
 
 
 ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
-  if (want_parts == -1 || want_parts > (int) strlen(string)) want_parts = strlen(string);
+  if (want_parts == -1 || want_parts > (int)strlen(string)) want_parts = (int)strlen(string);
   //printf("objstring:chars_to_array() string=%s want=%d\n", string, want_parts);
   ObjArray* res = newArrayZeroed(vm, want_parts);
   for (int i=0; i<want_parts; i++) {
@@ -103,7 +103,7 @@ ObjArray* chars_to_array(VM* vm, const char* string, int want_parts) {
     } else {
       //printf("last element: %d\n", i);
       // Last element gets remainder of the string
-      int rest = strlen(string+i);
+      int rest = (int)strlen(string+i);
       res->values[i] = OBJ_VAL(copyString(vm, string+i, rest));
     }
     //printf("objstring:chars_to_array() i=%d element='%s'\n", i, AS_CSTRING(res->values[i]));
@@ -234,7 +234,7 @@ static bool string_split(void* vm, Value receiver, int argCount, Value* args, Va
   CHECK_ARG_IS_STRING(0);
 
   ObjString* delim = AS_STRING(args[0]);
-  int want_parts = (argCount == 2 ? AS_NUMBER(args[1]) : -1); // Default (-1) is unlimited
+  int want_parts = (argCount == 2 ? (int)AS_NUMBER(args[1]) : -1); // Default (-1) is unlimited
   if (want_parts == 0) {
     // Wants zero length, gets zero length
     *result = OBJ_VAL(newArray(vm));
@@ -337,10 +337,11 @@ bool getStringProperty(void* vm, Value receiver, ObjString* name, Value* propert
   }
   if (strcmp(name->chars, "code")==0) {
     // Return the first codepoint value of the string, -1 if string is empty
-    int bufsiz = 2;
-    uint32_t codepoint[bufsiz];
+#define UCS_BUFSIZ 2
+    uint32_t codepoint[UCS_BUFSIZ]; // u8_toucs needs room for a terminating 0
     //printf("objstring:stringProperty() get codepoint of '%s' (%d bytes)\n", string->chars, string->length);
-    u8_toucs(codepoint, bufsiz, string->chars, string->length);
+    u8_toucs(codepoint, UCS_BUFSIZ, string->chars, string->length);
+#undef UCS_BUFSIZ
     //printf("objstring:stringProperty() result=%d\n", codepoint[0]);
     *property = NUMBER_VAL((double) codepoint[0]);
     return true;

@@ -48,12 +48,12 @@ static void repl(VM* vm) {
       break; // Got "exit" command from STDIN
 
     // Add line to code (+1 = include "\0")
-    int ll = strlen(line);
+    size_t ll = strlen(line);
     if (code == NULL) {
       temp = malloc(ll + 1);
       strncpy(temp, line, ll + 1);
     } else {
-      int cl = strlen(code);
+      size_t cl = strlen(code);
       temp = (char *) malloc(cl + ll + 1);
       strncpy(temp, code, cl + 1);
       strncat(temp, line, ll + 1);

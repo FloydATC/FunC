@@ -892,7 +892,7 @@ static void string(VM* vm, bool canAssign) {
         case '\'': o_str[o] = '\''; i+=2; o+=1; continue;
         case 'a':  o_str[o] = '\a'; i+=2; o+=1; continue; // bell
         case 'b':  o_str[o] = '\b'; i+=2; o+=1; continue; // backspace
-        case 'e':  o_str[o] = '\e'; i+=2; o+=1; continue; // escape
+        case 'e':  o_str[o] = '\x1B'; i+=2; o+=1; continue; // escape
         case 'n':  o_str[o] = '\n'; i+=2; o+=1; continue; // newline
         case 'r':  o_str[o] = '\r'; i+=2; o+=1; continue; // carriage return
         case 't':  o_str[o] = '\t'; i+=2; o+=1; continue; // tab

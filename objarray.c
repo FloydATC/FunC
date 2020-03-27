@@ -228,7 +228,7 @@ static bool array_resize(void* vm, Value receiver, int argCount, Value* args, Va
   ObjArray* array = AS_ARRAY(receiver);
 
   int length = array->length;
-  int newlen = AS_NUMBER(args[0]);
+  int newlen = (int)AS_NUMBER(args[0]);
 
   if (newlen != length) {
     // Resize array
@@ -324,7 +324,7 @@ static bool array_join(void* vm, Value receiver, int argCount, Value* args, Valu
   int offset = 0;
   for (int i=0; i<array->length; i++) {
     // Copy element
-    ObjString* element;
+    ObjString* element = NULL;
     if (IS_STRING(array->values[i])) {
       element = AS_STRING(array->values[i]);
     } else if (IS_NUMBER(array->values[i])) {

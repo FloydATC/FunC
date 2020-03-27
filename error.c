@@ -8,7 +8,7 @@
 char* vbprintf(char* buf, const char* format, va_list argp) {
   va_list argp_copy;
   va_copy(argp_copy, argp); // vsnprintf somehow destroys argp so we need a copy
-  int bufsiz = 0;
+  size_t bufsiz = 0;
   if (buf != NULL) { bufsiz = strlen(buf); }
   //printf("error:vbprintf() buf=%p bufsiz in=%d\n", buf, bufsiz);
 

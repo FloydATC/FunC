@@ -1,7 +1,16 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef _MSC_VER
+//#include <Sysinfoapi.h>
+#include <windows.h>
+#include <direct.h>
+//#include <dirent_msvc.h>
+#define PATH_MAX 260
+#else
 #include <unistd.h>
+#endif
 
 #include "file.h"
 #include "vm.h"
@@ -17,7 +26,7 @@ int readFile(const char* path, char** buffer) {
   if (file == NULL) {
     fprintf(stderr, "Could not open file '%s'.\n", path);
     char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    if (_getcwd(cwd, sizeof(cwd)) != (char*)NULL) {
       printf("Current working dir: %s\n", cwd);
     }
     return(-74);
@@ -63,7 +72,7 @@ int readFile(const char* path, char** buffer) {
 #ifdef DEBUG_TRACE_FILE
   printf("file:readFile() file closed\n");
 #endif
-  return bytesRead;
+  return (int)bytesRead;
 }
 
 
@@ -75,7 +84,7 @@ int addFilename(void* vm, const char* filename) {
   if (fileno != -1) return fileno;
 
   // Internalize filename
-  Value fname = OBJ_VAL(copyString(vm, filename, strlen(filename)));
+  Value fname = OBJ_VAL(copyString(vm, filename, (int)strlen(filename)));
 
   // Add the value to array
   push(vm, fname);
@@ -91,7 +100,7 @@ int addFilename(void* vm, const char* filename) {
 // Otherwise return the index
 int getFilenoByName(void* vm, const char* filename) {
   // Internalize filename
-  Value fname = OBJ_VAL(copyString(vm, filename, strlen(filename)));
+  Value fname = OBJ_VAL(copyString(vm, filename, (int)strlen(filename)));
 
   // Scan ValueArray and check for equality
   for (int i=0; i<((VM*)vm)->filenames.count; i++) {

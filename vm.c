@@ -19,6 +19,11 @@
 #include "objnumber.h"
 #include "memory.h"
 
+#ifdef _MSC_VER
+//#include <sysinfoapi.h>
+#include <windows.h>
+#endif
+
 //VM vm;
 // The choice to have a static VM instance is a concession for the book,
 // but not necessarily a sound engineering choice for a real
@@ -190,8 +195,10 @@ char* to_cstring(Value v) {
     return s;
   }
   if (IS_NUMBER(v)==true) {
-    static char x[1024];
-    sprintf(x, "%g", AS_NUMBER(v));
+#define NUMBER_BUFSIZ 1024
+    static char x[NUMBER_BUFSIZ];
+    snprintf(x, NUMBER_BUFSIZ, "%g", AS_NUMBER(v));
+#undef NUMBER_BUFSIZ
     //printf("to_cstring() returning number as %s\n", x);
     return x;
   }
@@ -206,12 +213,21 @@ bool is_string(Value v) {
   return IS_STRING(v);
 }
 
+
+#ifdef _MSC_VER
+#define CLOCK_REALTIME -1
+//struct timespec { long tv_sec; long tv_nsec; };    //header part
+int clock_gettime(int ignore, struct timespec* spec)      //C-file part
+{
+    __int64 wintime; GetSystemTimeAsFileTime((LPFILETIME)&wintime);
+    wintime -= 116444736000000000i64;  //1jan1601 to 1jan1970
+    spec->tv_sec = wintime / 10000000i64;           //seconds
+    spec->tv_nsec = wintime % 10000000i64 * 100;      //nano-seconds
+    return 0;
+}
+#endif
+
 double now() {
-  //struct timeb t;
-  //ftime(&t);
-  //double ts = t.time + (t.millitm / 1000.0);
-  //printf("now() = %f\n", ts);
-  //return ts;
   long            ms; // Milliseconds
   time_t          s;  // Seconds
   struct timespec spec;
@@ -219,7 +235,7 @@ double now() {
   clock_gettime(CLOCK_REALTIME, &spec);
 
   s  = spec.tv_sec;
-  ms = round(spec.tv_nsec / 1.0e6); // Convert nanoseconds to milliseconds
+  ms = (long)round(spec.tv_nsec / 1.0e6); // Convert nanoseconds to milliseconds
   if (ms > 999) {
     s++;
     ms = 0;
@@ -236,7 +252,7 @@ static bool clockNative(void* vm, int argCount, Value* args, Value* result) {
   (unused)vm;
   (unused)argCount;
   (unused)args;
-  *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+  *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC); // time.h
   return true;
 }
 

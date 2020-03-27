@@ -45,10 +45,11 @@
 static bool number_char(void* vm, Value receiver, Value* result) {
 
   // Return character of a utf8 codepoint
-  int bufsiz = 5;
-  char buf[bufsiz];
+#define CHAR_BUFSIZ 5
+  char buf[CHAR_BUFSIZ];
   uint32_t codepoint = (uint32_t) AS_NUMBER(receiver);
-  int length = u8_toutf8(buf, bufsiz, &codepoint, 1);
+  int length = u8_toutf8(buf, CHAR_BUFSIZ, &codepoint, 1);
+#undef CHAR_BUFSIZ
 
   *result = OBJ_VAL(copyString(vm, buf, length));
   return true;
@@ -76,7 +77,7 @@ static bool number_base(void* vm, Value receiver, int argCount, Value* args, Val
   CHECK_ARG_IS_NUMBER(0);
 
   double number = AS_NUMBER(receiver);
-  int radix = AS_NUMBER(args[0]);
+  int radix = (int)AS_NUMBER(args[0]);
 
   char* string = NULL;
   int length = double_to_str(number, &string, radix);
@@ -142,6 +143,12 @@ static bool number_hypot(void* vm, Value receiver, int argCount, Value* args, Va
     return true; \
   } \
 
+#define INT_PROPERTY(fn_name,fn_call) \
+  if (strcmp(name->chars, fn_name)==0) { \
+    *property = NUMBER_VAL(fn_call((int)AS_NUMBER(receiver))); \
+    return true; \
+  } \
+
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
     *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
@@ -174,7 +181,7 @@ bool getNumberProperty(void* vm, Value receiver, ObjString* name, Value* propert
   PROPERTY("ceil",  ceil);
   PROPERTY("sqrt",  sqrt);
   PROPERTY("cbrt",  cbrt);
-  PROPERTY("abs",   abs);
+  INT_PROPERTY("abs", abs);
 
   // These methods all call a C function defined above, take 1 argument and return a number
   METHOD("base",  number_base);

@@ -302,7 +302,7 @@ Token includeDirective(Scanner* scanner) {
     if (isAtEol(scanner)) return errorToken(scanner, "Unterminated string.");
     if (isAtEnd(scanner)) return errorToken(scanner, "Unexpected end of file.");
     const char* fname_begin = scanner->start;
-    int fname_length = scanner->current - scanner->start;
+    int fname_length = (int)(scanner->current - scanner->start);
     advance(scanner); // consume terminating doublequotes
     scanner->start = scanner->current;
     skipWhitespace(scanner);
@@ -322,7 +322,7 @@ Token directive(Scanner* scanner) {
   advance(scanner);
   // Get directive name
   while (isAlpha(peek(scanner)) || isBase10Digit(peek(scanner))) advance(scanner);
-  int directive_length = scanner->current - scanner->start;
+  int directive_length = (int)(scanner->current - scanner->start);
 
 #ifdef DEBUG_TRACE_SCANNER
   printf("scanner:directive() start=%p\n", scanner->start);

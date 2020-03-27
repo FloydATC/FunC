@@ -94,8 +94,8 @@ int has_decimals(char* str) {
 // "123.000000" => "123"
 // Note: String must be terminated!
 void trim_trailing_zeroes(char** str) {
-  int oldlen = strlen(*str);
-  int newlen = oldlen;
+  size_t oldlen = strlen(*str);
+  size_t newlen = oldlen;
   while ((*str)[newlen-1] == '0') newlen--; // Trim until we encounter a digit other than zero
   if ((*str)[newlen-1] == '.') newlen--; // Don't leave a dangling decimal point
   // Modify the string if needed
@@ -113,16 +113,16 @@ void trim_trailing_zeroes(char** str) {
 // Note: String must be terminated!
 void trim_leading_zeroes(char** str) {
   //printf("number:trim_leading_zeroes() %p->%s\n", *str, *str);
-  int length = strlen(*str);
+  size_t length = strlen(*str);
   //printf("number:trim_leading_zeroes() length=%d\n", length);
-  int offset = 0;
+  size_t offset = 0;
   while ((*str)[offset] == '0') offset++; // Scan forward until we find a digit (or string terminator)
   //printf("number:trim_leading_zeroes() offset=%d\n", offset);
   if (offset > 0) {
     // We found one or more leading zero.
     // Allocate a new char* buffer, then copy the chars we want to keep
     if (offset == length) offset--;
-    int newlen = length - offset;
+    size_t newlen = length - offset;
     char* tmp = malloc(newlen*sizeof(char) + 1);
     strncpy(tmp, (*str)+offset, newlen);
     tmp[newlen] = '\0';
@@ -140,7 +140,7 @@ int double_to_str_dec(double number, char** str) {
   length = snprintf(*str, length, "%f", number);
   (*str)[length] = '\0'; // Terminate
   if (has_decimals(*str)) trim_trailing_zeroes(str);
-  return strlen(*str); // trimming may have changed the length
+  return (int)strlen(*str); // trimming may have changed the length
 }
 
 int double_to_str(double number, char** str, int radix) {
@@ -171,7 +171,7 @@ int double_to_str(double number, char** str, int radix) {
     if ((place & max) > 0) {
       //printf("number:double_to_string() n=%" PRIu64 " place=%d^%d=%" PRIu64 "\n", n, radix, bits-i-1, place);
       value = n / place;
-      buf[i] = value_digit(value);
+      buf[i] = value_digit((int)value);
       n -= value * place;
       //printf("number:double_to_string() n=%" PRIu64 "\n", n);
     } else {
@@ -182,6 +182,6 @@ int double_to_str(double number, char** str, int radix) {
 
   trim_leading_zeroes(&buf);
   *str = buf;
-  return strlen(*str);
+  return (int)strlen(*str);
 }
 
