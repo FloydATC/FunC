@@ -56,7 +56,7 @@ void* reallocate(void* vm, void* previous, size_t oldSize, size_t newSize) {
     collectGarbage();
 #endif
     if (((VM*)vm)->bytesAllocated > ((VM*)vm)->nextGC) {
-      collectGarbage();
+      collectGarbage(vm);
     }
   }
   if (newSize == 0) {
@@ -77,7 +77,7 @@ void* reallocate(void* vm, void* previous, size_t oldSize, size_t newSize) {
   if (oldSize > 0) hexdump(previous, oldSize);
 #endif
 #endif
-  void* ptr = realloc(previous, newSize);
+  uint8_t* ptr = realloc(previous, newSize);
 #ifdef DEBUG_TRACE_MEMORY
   printf("memory:reallocate() allocated %p\n", ptr);
 #endif
