@@ -90,6 +90,8 @@ void print_version() {
   printf("FunC v%ld.%ld.%ld.%ld %s",MAJOR,MINOR,BUILD,REVISION,STATUS); //C example
 }
 
+
+#ifndef EXCLUDE_MAIN
 int main(int argc, const char* argv[]) {
   VM* vm = initVM();
 
@@ -110,4 +112,4 @@ int main(int argc, const char* argv[]) {
 
   return 0;
 }
-
+#endif
