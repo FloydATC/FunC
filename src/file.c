@@ -1,12 +1,13 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 
 #ifdef _MSC_VER
-//#include <Sysinfoapi.h>
 #include <windows.h>
 #include <direct.h>
-//#include <dirent_msvc.h>
+#define getcwd _getcwd // stupid MSFT "deprecation" warning
 #define PATH_MAX 260
 #else
 #include <unistd.h>
@@ -26,7 +27,7 @@ int readFile(const char* path, char** buffer) {
   if (file == NULL) {
     fprintf(stderr, "Could not open file '%s'.\n", path);
     char cwd[PATH_MAX];
-    if (_getcwd(cwd, sizeof(cwd)) != (char*)NULL) {
+    if (getcwd(cwd, sizeof(cwd)) != (char*)NULL) {
       printf("Current working dir: %s\n", cwd);
     }
     return(-74);
