@@ -39,6 +39,11 @@
     return false; \
   }
 
+
+double absolute(double number) {
+  return (number >= 0 ? number : -number);
+}
+
 // ==== attributes ====
 
 // Native C attribute: NUMBER.char
@@ -143,12 +148,6 @@ static bool number_hypot(void* vm, Value receiver, int argCount, Value* args, Va
     return true; \
   } \
 
-#define INT_PROPERTY(fn_name,fn_call) \
-  if (strcmp(name->chars, fn_name)==0) { \
-    *property = NUMBER_VAL(fn_call((int)AS_NUMBER(receiver))); \
-    return true; \
-  } \
-
 #define METHOD(fn_name, fn_call) \
   if (strcmp(name->chars, fn_name)==0) { \
     *property = OBJ_VAL(newNativeMethod(vm, receiver, name, fn_call)); \
@@ -181,7 +180,7 @@ bool getNumberProperty(void* vm, Value receiver, ObjString* name, Value* propert
   PROPERTY("ceil",  ceil);
   PROPERTY("sqrt",  sqrt);
   PROPERTY("cbrt",  cbrt);
-  INT_PROPERTY("abs", abs);
+  PROPERTY("abs",   absolute);
 
   // These methods all call a C function defined above, take 1 argument and return a number
   METHOD("base",  number_base);
