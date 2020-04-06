@@ -39,3 +39,12 @@ include_directories(
 target_link_libraries(FunCx64 m)
 target_link_libraries(func m)
 target_link_libraries(func FunCx64)
+
+include(GNUInstallDirs)
+install(TARGETS FunCx64 
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(TARGETS func
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
