@@ -73,7 +73,7 @@ void runtimeError(VM* vm, const char* format, ...) {
   }
 
   // Print buffer on stderr
-  fprintf(stderr, msgbuf);
+  fprintf(stderr, "%s", msgbuf);
 
   // Callback with buffer
   if (vm->error_callback != NULL) { vm->error_callback(msgbuf); }
