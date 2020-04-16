@@ -273,6 +273,7 @@ static void freeObject(void* vm, Obj* object) {
     }
     case OBJ_ARRAY: {
       ObjArray* array = (ObjArray*)object;
+      FREE_ARRAY(vm, Value, array->values, array->length);
       FREE(vm, ObjArray, array);
       break;
     }
