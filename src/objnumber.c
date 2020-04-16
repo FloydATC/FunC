@@ -11,13 +11,13 @@
 
 #define CHECK_ARG_IS_STRING(index) \
   if (argCount >= index+1 && !IS_STRING(args[index])) { \
-    runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+    runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getTypeAsString(args[index])); \
     return false; \
   }
 
 #define CHECK_ARG_IS_NUMBER(index) \
   if (argCount >= index+1 && !IS_NUMBER(args[index])) { \
-    runtimeError(vm, "Argument %d must be a number, got %s.", index+1, getValueTypeString(args[index])); \
+    runtimeError(vm, "Argument %d must be a number, got %s.", index+1, getTypeAsString(args[index])); \
     return false; \
   }
 

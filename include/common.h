@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define NAN_BOXING
+
 typedef void unused; // Silence warnings about unused variables with "(unused) var;"
 
 //#define DEBUG

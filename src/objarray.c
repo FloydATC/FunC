@@ -12,7 +12,7 @@
 #define CHECK_ARG_IS_STRING(index) \
   if (argCount >= index+1) { \
     if (!IS_STRING(args[index])) { \
-      runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getValueTypeString(args[index])); \
+      runtimeError(vm, "Argument %d must be a string, got %s.", index+1, getTypeAsString(args[index])); \
       return false; \
     } \
   }
@@ -20,7 +20,7 @@
 #define CHECK_ARG_IS_ARRAY(index) \
   if (argCount >= index+1) { \
     if(!IS_ARRAY(args[index])) { \
-      runtimeError(vm, "Argument %d must be an array, got %s.", index+1, getValueTypeString(args[index])); \
+      runtimeError(vm, "Argument %d must be an array, got %s.", index+1, getTypeAsString(args[index])); \
       return false; \
     } \
   }

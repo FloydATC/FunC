@@ -317,7 +317,7 @@ void printObject(Value value) {
 }
 
 // Object type names from USER perspective
-char* getObjectTypeString(Value value) {
+char* getObjectTypeAsString(Value value) {
   switch (OBJ_TYPE(value)) {
     case OBJ_CLASS: return "class";
     case OBJ_INSTANCE: return "instance";
@@ -334,18 +334,9 @@ char* getObjectTypeString(Value value) {
 // Return user visible types for each type of object Value
 // This refers to built-in types, not user defined classes/instances
 // Note: If it acts like a function to the user, return "function"
-Value getObjectType(void* vm, Value value) {
-  switch (OBJ_TYPE(value)) {
-    case OBJ_CLASS: return OBJ_VAL(copyString(vm, "class", 5));
-    case OBJ_INSTANCE: return OBJ_VAL(copyString(vm, "instance", 8));
-    case OBJ_ARRAY: return OBJ_VAL(copyString(vm, "array", 5));
-    case OBJ_NATIVE:
-    case OBJ_NATIVE_METHOD:
-    case OBJ_BOUND_METHOD:
-    case OBJ_CLOSURE: return OBJ_VAL(copyString(vm, "function", 8));
-    case OBJ_STRING: return OBJ_VAL(copyString(vm, "string", 6));
-    default: return OBJ_VAL(copyString(vm, "internal", 8)); // Not actually user visible
-  }
+Value getObjectTypeAsValue(void* vm, Value value) {
+  char* type = getObjectTypeAsString(value);
+  return OBJ_VAL(copyString(vm, type, strlen(type)));
 }
 
 

@@ -38,12 +38,24 @@ void freeValueArray(void* vm, ValueArray* array) {
 }
 
 void printValue(Value value) {
+#ifdef NAN_BOXING
+  if (IS_BOOL(value)) {
+    printf(AS_BOOL(value) ? "true" : "false");
+  } else if (IS_NULL(value)) {
+    printf("null");
+  } else if (IS_NUMBER(value)) {
+    printf("%g", AS_NUMBER(value));
+  } else if (IS_OBJ(value)) {
+    printObject(value);
+  }                                           
+#else
   switch (value.type) {
     case VAL_BOOL:   printf(AS_BOOL(value) ? "true" : "false"); break;
     case VAL_NULL:   printf("null"); break;
     case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break;
     case VAL_OBJ:    printObject(value); break;
   }
+#endif
 }
 
 void printValueType(ValueType type) {
@@ -57,6 +69,10 @@ void printValueType(ValueType type) {
 }
 
 bool valuesEqual(Value a, Value b) {
+#ifdef NAN_BOXING
+  if (IS_NUMBER(a) && IS_NUMBER(b)) return AS_NUMBER(a) == AS_NUMBER(b); // Satisfy NaN != NaN
+  return a == b;
+#else
   if (a.type != b.type) return false;
 
   switch (a.type) {
@@ -68,42 +84,41 @@ bool valuesEqual(Value a, Value b) {
     case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b);
   }
   return false;
+#endif
 }
 
 bool valuesGreater(Value a, Value b) {
-  if (a.type != b.type) return false;
-  // Return true if a is greater than b
-
-  switch (a.type) {
-    case VAL_BOOL:   return false; // Booleans have no sense of less/greater
-    case VAL_NULL:    return false; // Null has no value
-    case VAL_NUMBER: return AS_NUMBER(a) > AS_NUMBER(b);
-    // All string objects are unique
-    // This means we don't have to compare each character
-    case VAL_OBJ:    return objectsGreater(AS_OBJ(a), AS_OBJ(b));
-  }
+  if (IS_NUMBER(a) && IS_NUMBER(b)) return AS_NUMBER(a) > AS_NUMBER(b);
+  if (IS_OBJ(a) && IS_OBJ(b)) return objectsGreater(AS_OBJ(a), AS_OBJ(b));
   return false;
 }
 
 // Return user visible types for each type of object Value
-char* getValueTypeString(Value value) {
+char* getTypeAsString(Value value) {
+#ifdef NAN_BOXING
+  if (IS_BOOL(value)) {
+    return "boolean";
+  } else if (IS_NULL(value)) {
+    return "null";
+  } else if (IS_NUMBER(value)) {
+    return "number";
+  } else if (IS_OBJ(value)) {
+    return getObjectTypeAsString(value);
+  }                                           
+#else
   switch (value.type) {
     case VAL_BOOL: return "boolean";
     case VAL_NULL: return "null";
     case VAL_NUMBER: return "number";
-    case VAL_OBJ: return getObjectTypeString(value);
+    case VAL_OBJ: return getObjectTypeAsString(value);
     default: return "invalid";
   }
+#endif
 }
 
 // Return user visible types for each type of object Value as a Value
-Value getValueType(void* vm, Value value) {
-  switch (value.type) {
-    case VAL_BOOL: return OBJ_VAL(copyString(vm, "boolean", 7));
-    case VAL_NULL: return OBJ_VAL(copyString(vm, "null", 4));
-    case VAL_NUMBER: return OBJ_VAL(copyString(vm, "number", 6));
-    case VAL_OBJ: return getObjectType(vm, value);
-    default: return OBJ_VAL(copyString(vm, "invalid", 7));
-  }
+Value getTypeAsValue(void* vm, Value value) {
+  char* type = getTypeAsString(value);
+  return OBJ_VAL(copyString(vm, type, strlen(type)));
 }
 

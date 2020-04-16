@@ -478,7 +478,7 @@ static bool invoke(VM* vm, ObjString* name, int argCount) {
 
   if (!IS_INSTANCE(receiver)) {
     //runtimeError(vm, "Only instances have methods. #invoke");
-    runtimeError(vm, "Type %s has no properties.", getValueTypeString(receiver));
+    runtimeError(vm, "Type %s has no properties.", getTypeAsString(receiver));
     return false;
   }
 
@@ -1210,7 +1210,7 @@ InterpretResult run(VM* vm) {
         Value result;
 
         if (strncmp(name->chars, "type", name->length)==0) {
-          result = getValueType(vm, value);
+          result = getTypeAsValue(vm, value);
           pop(vm);
           push(vm, result);
           return true;
@@ -1222,7 +1222,7 @@ InterpretResult run(VM* vm) {
         if (IS_STRING(peek(vm, 0))) return pushStringProperty(vm, value, name);
 
         if (!IS_INSTANCE(peek(vm, 0))) {
-          runtimeError(vm, "Type %s has no properties.", getValueTypeString(value));
+          runtimeError(vm, "Type %s has no properties.", getTypeAsString(value));
           return INTERPRET_RUNTIME_ERROR;
         }
         // If we get this far, the receiver should be an object
