@@ -214,10 +214,11 @@ uint32_t u8_nextchar(char *s, int *i)
     int sz = 0;
 
     do {
+        if (s[*i] == 0) return 0; // Prevent invalid read
         ch <<= 6;
         ch += (unsigned char)s[(*i)++];
         sz++;
-    } while (s[*i] && !isutf(s[*i]));
+    } while (!isutf(s[*i]));
     ch -= offsetsFromUTF8[sz-1];
 
     return ch;
