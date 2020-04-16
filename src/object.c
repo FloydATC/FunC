@@ -336,7 +336,7 @@ char* getObjectTypeAsString(Value value) {
 // Note: If it acts like a function to the user, return "function"
 Value getObjectTypeAsValue(void* vm, Value value) {
   char* type = getObjectTypeAsString(value);
-  return OBJ_VAL(copyString(vm, type, strlen(type)));
+  return OBJ_VAL(copyString(vm, type, (int)strlen(type)));
 }
 
 

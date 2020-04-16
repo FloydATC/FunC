@@ -47,7 +47,7 @@ void printValue(Value value) {
     printf("%g", AS_NUMBER(value));
   } else if (IS_OBJ(value)) {
     printObject(value);
-  }                                           
+  }                                          
 #else
   switch (value.type) {
     case VAL_BOOL:   printf(AS_BOOL(value) ? "true" : "false"); break;
@@ -104,7 +104,9 @@ char* getTypeAsString(Value value) {
     return "number";
   } else if (IS_OBJ(value)) {
     return getObjectTypeAsString(value);
-  }                                           
+  } else {
+    return "invalid";
+  }
 #else
   switch (value.type) {
     case VAL_BOOL: return "boolean";
@@ -119,6 +121,6 @@ char* getTypeAsString(Value value) {
 // Return user visible types for each type of object Value as a Value
 Value getTypeAsValue(void* vm, Value value) {
   char* type = getTypeAsString(value);
-  return OBJ_VAL(copyString(vm, type, strlen(type)));
+  return OBJ_VAL(copyString(vm, type, (int)strlen(type)));
 }
 
