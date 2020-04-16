@@ -15,18 +15,18 @@
 
 void initTable(Table* table) {
   table->count = 0;
-  table->capacity = 0;
+  table->capacityMask = -1;
   table->entries = NULL;
 }
 
 void freeTable(void* vm, Table* table) {
-  FREE_ARRAY(vm, Entry, table->entries, table->capacity);
+  FREE_ARRAY(vm, Entry, table->entries, table->capacityMask + 1);
   initTable(table);
 }
 
-static Entry* findEntry(Entry* entries, int capacity,
+static Entry* findEntry(Entry* entries, int capacityMask,
                         ObjString* key) {
-  uint32_t index = key->hash % capacity;
+  uint32_t index = key->hash & capacityMask;
   Entry* tombstone = NULL;
 
   for (;;) {
@@ -47,7 +47,7 @@ static Entry* findEntry(Entry* entries, int capacity,
       return entry;
     }
 
-    index = (index + 1) % capacity;
+    index = (index + 1) & capacityMask;
   }
 }
 
@@ -57,20 +57,20 @@ bool tableGet(void* vm, Table* table, ObjString* key, Value* value) {
   (unused)vm;
   if (table->count == 0) return false;
 
-  Entry* entry = findEntry(table->entries, table->capacity, key);
+  Entry* entry = findEntry(table->entries, table->capacityMask, key);
   if (entry->key == NULL) return false;
 
   *value = entry->value;
   return true;
 }
 
-static void adjustCapacity(void* vm, Table* table, int capacity) {
+static void adjustCapacity(void* vm, Table* table, int capacityMask) {
 #ifdef DEBUG_TRACE_TABLES
-  printf("table:adjustCapacity() table=%p capacity=%d\n", table, capacity);
+  printf("table:adjustCapacity() table=%p capacityMask=%d\n", table, capacityMask);
 #endif
-  Entry* entries = ALLOCATE(vm, Entry, capacity);
+  Entry* entries = ALLOCATE(vm, Entry, capacityMask + 1);
   // Initialize new table
-  for (int i = 0; i < capacity; i++) {
+  for (int i = 0; i <= capacityMask; i++) {
     entries[i].key = NULL;
     entries[i].value = NULL_VAL;
   }
@@ -82,11 +82,11 @@ static void adjustCapacity(void* vm, Table* table, int capacity) {
   // Table grows by a factor of 2 so this reorg happens less frequently with size
   // but crossing a n**2 boundary does trigger the following loop:
   table->count = 0;
-  for (int i = 0; i < table->capacity; i++) {
+  for (int i = 0; i <= table->capacityMask; i++) {
     Entry* entry = &table->entries[i];
     if (entry->key == NULL) continue;
 
-    Entry* dest = findEntry(entries, capacity, entry->key);
+    Entry* dest = findEntry(entries, capacityMask, entry->key);
     dest->key = entry->key;
     dest->value = entry->value;
     table->count++;
@@ -94,23 +94,23 @@ static void adjustCapacity(void* vm, Table* table, int capacity) {
 
   // Dispose of the old array:
   // FREE_ARRAY(type, oldPointer, oldCount) in memory.h
-  FREE_ARRAY(vm, Entry, table->entries, table->capacity);
+  FREE_ARRAY(vm, Entry, table->entries, table->capacityMask + 1);
 
   // Replace with new pointer and capacity
   table->entries = entries;
-  table->capacity = capacity;
+  table->capacityMask = capacityMask;
 }
 
 // Insert (key = value) into table
 bool tableSet(void* vm, Table* table, ObjString* key, Value value) {
   // Make sure the table exists and is big enough
-  if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
-    int capacity = GROW_CAPACITY(table->capacity);
-    adjustCapacity(vm, table, capacity);
+  if (table->count + 1 > (table->capacityMask + 1) * TABLE_MAX_LOAD) {
+    int capacityMask = GROW_CAPACITY(table->capacityMask + 1) - 1;
+    adjustCapacity(vm, table, capacityMask);
   }
 
   // Does this key already exist?
-  Entry* entry = findEntry(table->entries, table->capacity, key);
+  Entry* entry = findEntry(table->entries, table->capacityMask, key);
 
   bool isNewKey = entry->key == NULL;
   if (isNewKey && IS_NULL(entry->value)) table->count++;
@@ -128,7 +128,7 @@ bool tableDelete(void* vm, Table* table, ObjString* key) {
   if (table->count == 0) return false;
 
   // Find the entry.
-  Entry* entry = findEntry(table->entries, table->capacity, key);
+  Entry* entry = findEntry(table->entries, table->capacityMask, key);
   if (entry->key == NULL) return false;
 
   // Place a tombstone in the entry.
@@ -140,7 +140,7 @@ bool tableDelete(void* vm, Table* table, ObjString* key) {
 
 // Copy entries in table 'from' into table 'to'
 void tableAddAll(void* vm, Table* from, Table* to) {
-  for (int i = 0; i < from->capacity; i++) {
+  for (int i = 0; i <= from->capacityMask; i++) {
     Entry* entry = &from->entries[i];
     if (entry->key != NULL) {
       tableSet(vm, to, entry->key, entry->value);
@@ -151,7 +151,7 @@ void tableAddAll(void* vm, Table* from, Table* to) {
 ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t hash) {
   if (table->count == 0) return NULL;
 
-  uint32_t index = hash % table->capacity;
+  uint32_t index = hash & table->capacityMask;
 
   for (;;) {
     Entry* entry = &table->entries[index];
@@ -166,12 +166,12 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
       return entry->key;
     }
 
-    index = (index + 1) % table->capacity;
+    index = (index + 1) & table->capacityMask;
   }
 }
 
 void tableRemoveWhite(void* vm, Table* table) {
-  for (int i = 0; i < table->capacity; i++) {
+  for (int i = 0; i <= table->capacityMask; i++) {
     Entry* entry = &table->entries[i];
     if (entry->key != NULL && !entry->key->obj.isMarked) {
       tableDelete(vm, table, entry->key);
@@ -180,7 +180,7 @@ void tableRemoveWhite(void* vm, Table* table) {
 }
 
 void markTable(void* vm, Table* table) {
-  for (int i = 0; i < table->capacity; i++) {
+  for (int i = 0; i <= table->capacityMask; i++) {
     Entry* entry = &table->entries[i];
     markObject(vm, (Obj*)entry->key);
     markValue(vm, entry->value);
